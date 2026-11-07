@@ -2045,6 +2045,37 @@ export interface MachineInfo {
   wsl?: boolean | null
   container?: boolean | null
 }
+/** ``auto_review`` is true only under the smart guardian; ``approval_mode`` is the profile's real setting so a client can say approvals are off, in which case rules are stored and not applied. */
+export interface PermissionsState {
+  auto_review: boolean
+  approval_mode: PermissionsApprovalMode
+  ask: PermissionRule[]
+  allow: PermissionRule[]
+}
+export type PermissionsApprovalMode = 'manual' | 'smart' | 'off'
+/** A short sentence the user typed; ``created_at`` is ISO 8601 UTC. */
+export interface PermissionRule {
+  id: string
+  text: string
+  created_at: string
+}
+export interface PermissionsSetAutoReviewParams {
+  profile?: string | null
+  enabled: boolean
+}
+export interface PermissionsRuleAddParams {
+  profile?: string | null
+  list: PermissionRuleList
+  text: string
+}
+export type PermissionRuleList = 'ask' | 'allow'
+export interface PermissionsRuleRemoveParams {
+  profile?: string | null
+  id: string
+}
+export interface PermissionsRuleRemoveResult {
+  removed: boolean
+}
 /** ``word`` is the token under the cursor (``@`` prefix = context reference); ``cwd`` / ``session_id`` pick the directory the listing resolves against. */
 export interface CompletePathParams {
   profile?: string | null
@@ -6590,6 +6621,14 @@ export interface RpcMethods {
   'paste.collapse': { params: PasteCollapseParams; result: PasteCollapseResult }
   /** Render a PDF's pages to PNG and queue them as images for the next turn. */
   'pdf.attach': { params: PdfAttachParams; result: PdfAttachResult }
+  /** Auto-Review state and both rule lists of one profile. */
+  'permissions.get': { params: ProfileParams; result: PermissionsState }
+  /** Add a rule (1 to 280 characters after trimming, at most 30 per list, never a repeat of a rule in either list); returns the stored rule. */
+  'permissions.rules.add': { params: PermissionsRuleAddParams; result: PermissionRule }
+  /** Remove a rule from whichever list holds it; an unknown id answers removed false, so a retry converges. */
+  'permissions.rules.remove': { params: PermissionsRuleRemoveParams; result: PermissionsRuleRemoveResult }
+  /** Turn Auto-Review on (smart guardian) or off (manual prompts); idempotent, never writes the mode that skips approvals, and leaves an already-off profile as it is. */
+  'permissions.set_auto_review': { params: PermissionsSetAutoReviewParams; result: PermissionsState }
   /** Stop an in-flight pet generate/hatch by token (idempotent). */
   'pet.cancel': { params: PetCancelParams; result: PetCancelResult }
   /** Half-block cell frames (or a kitty placement) for one pet state. */
@@ -7008,6 +7047,10 @@ export const RPC_METHODS = [
   'onboarding.state',
   'paste.collapse',
   'pdf.attach',
+  'permissions.get',
+  'permissions.rules.add',
+  'permissions.rules.remove',
+  'permissions.set_auto_review',
   'pet.cancel',
   'pet.cells',
   'pet.disable',

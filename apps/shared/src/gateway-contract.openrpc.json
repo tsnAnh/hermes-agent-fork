@@ -2329,6 +2329,78 @@
       }
     },
     {
+      "name": "permissions.get",
+      "summary": "Auto-Review state and both rule lists of one profile.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/ProfileParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/PermissionsState"
+        }
+      }
+    },
+    {
+      "name": "permissions.rules.add",
+      "summary": "Add a rule (1 to 280 characters after trimming, at most 30 per list, never a repeat of a rule in either list); returns the stored rule.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/PermissionsRuleAddParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/PermissionRule"
+        }
+      }
+    },
+    {
+      "name": "permissions.rules.remove",
+      "summary": "Remove a rule from whichever list holds it; an unknown id answers removed false, so a retry converges.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/PermissionsRuleRemoveParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/PermissionsRuleRemoveResult"
+        }
+      }
+    },
+    {
+      "name": "permissions.set_auto_review",
+      "summary": "Turn Auto-Review on (smart guardian) or off (manual prompts); idempotent, never writes the mode that skips approvals, and leaves an already-off profile as it is.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/PermissionsSetAutoReviewParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/PermissionsState"
+        }
+      }
+    },
+    {
       "name": "pet.cancel",
       "summary": "Stop an in-flight pet generate/hatch by token (idempotent).",
       "params": [
@@ -27111,6 +27183,179 @@
           }
         },
         "title": "PendingApproval",
+        "type": "object"
+      },
+      "PermissionRule": {
+        "additionalProperties": false,
+        "description": "A short sentence the user typed; ``created_at`` is ISO 8601 UTC.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "created_at"
+        ],
+        "title": "PermissionRule",
+        "type": "object"
+      },
+      "PermissionRuleList": {
+        "enum": [
+          "ask",
+          "allow"
+        ],
+        "title": "PermissionRuleList",
+        "type": "string"
+      },
+      "PermissionsApprovalMode": {
+        "enum": [
+          "manual",
+          "smart",
+          "off"
+        ],
+        "title": "PermissionsApprovalMode",
+        "type": "string"
+      },
+      "PermissionsRuleAddParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "list": {
+            "$ref": "#/components/schemas/PermissionRuleList"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "list",
+          "text"
+        ],
+        "title": "PermissionsRuleAddParams",
+        "type": "object"
+      },
+      "PermissionsRuleRemoveParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "PermissionsRuleRemoveParams",
+        "type": "object"
+      },
+      "PermissionsRuleRemoveResult": {
+        "additionalProperties": false,
+        "properties": {
+          "removed": {
+            "title": "Removed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "removed"
+        ],
+        "title": "PermissionsRuleRemoveResult",
+        "type": "object"
+      },
+      "PermissionsSetAutoReviewParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "PermissionsSetAutoReviewParams",
+        "type": "object"
+      },
+      "PermissionsState": {
+        "additionalProperties": false,
+        "description": "``auto_review`` is true only under the smart guardian; ``approval_mode`` is the profile's real setting so a\nclient can say approvals are off, in which case rules are stored and not applied.",
+        "properties": {
+          "auto_review": {
+            "title": "Auto Review",
+            "type": "boolean"
+          },
+          "approval_mode": {
+            "$ref": "#/components/schemas/PermissionsApprovalMode"
+          },
+          "ask": {
+            "items": {
+              "$ref": "#/components/schemas/PermissionRule"
+            },
+            "title": "Ask",
+            "type": "array"
+          },
+          "allow": {
+            "items": {
+              "$ref": "#/components/schemas/PermissionRule"
+            },
+            "title": "Allow",
+            "type": "array"
+          }
+        },
+        "required": [
+          "auto_review",
+          "approval_mode",
+          "ask",
+          "allow"
+        ],
+        "title": "PermissionsState",
         "type": "object"
       },
       "PersistedTurn": {
