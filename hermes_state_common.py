@@ -286,7 +286,7 @@ def _sql_session_last_active_by_id(session_id_expr: str) -> str:
 # (schema_read_probe_statements), never by this number, and its catch-up is the declarative
 # executescript(SCHEMA_SQL) + _reconcile_columns() every writable open already runs (additive,
 # idempotent). The bump only records that the declared shape changed; a new table or column needs no bump.
-SCHEMA_VERSION = 32
+SCHEMA_VERSION = 33
 
 # Auto-maintenance VACUUMs only above this freelist fraction; below it a rewrite costs more I/O than it returns.
 # Auto-maintenance only VACUUMs when at least this fraction of the database file is reclaimable (``PRAGMA
@@ -469,6 +469,38 @@ CREATE TABLE IF NOT EXISTS reach_offers (
 );
 CREATE INDEX IF NOT EXISTS idx_reach_offers_created ON reach_offers(created_at);
 CREATE INDEX IF NOT EXISTS idx_reach_offers_deferred ON reach_offers(not_before) WHERE status = 'deferred';
+"""
+
+BOT_THREAD_EVENTS_SQL = """
+CREATE TABLE IF NOT EXISTS bot_thread_events (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+    rev INTEGER NOT NULL,
+    thread_id TEXT NOT NULL,
+    thread_key TEXT NOT NULL,
+    exchange_id TEXT NOT NULL,
+    delivery_id TEXT NOT NULL,
+    direction TEXT NOT NULL CHECK (direction IN ('out', 'in')),
+    part TEXT NOT NULL CHECK (part IN ('message', 'reply')),
+    body TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('pending', 'delivered', 'unknown', 'answered', 'failed')),
+    reason TEXT NOT NULL DEFAULT '',
+    occurred_at REAL NOT NULL,
+    lane TEXT NOT NULL CHECK (lane IN ('local', 'relay', 'peer')),
+    counterpart_json TEXT NOT NULL,
+    anchor_session_id TEXT,
+    source TEXT NOT NULL DEFAULT 'live' CHECK (source IN ('live', 'backfill')),
+    UNIQUE (exchange_id, part),
+    CHECK (part = 'message' OR status = 'answered')
+);
+CREATE INDEX IF NOT EXISTS idx_bot_thread_events_thread ON bot_thread_events(thread_id, occurred_at, seq);
+CREATE INDEX IF NOT EXISTS idx_bot_thread_events_rev ON bot_thread_events(rev);
+CREATE INDEX IF NOT EXISTS idx_bot_thread_events_anchor ON bot_thread_events(anchor_session_id)
+    WHERE anchor_session_id IS NOT NULL;
+CREATE TABLE IF NOT EXISTS bot_thread_peer_origins (
+    peer_name TEXT PRIMARY KEY,
+    origin TEXT NOT NULL,
+    learned_at REAL NOT NULL
+);
 """
 
 SCHEMA_SQL = """
@@ -790,7 +822,7 @@ CREATE INDEX IF NOT EXISTS idx_session_model_usage_session ON session_model_usag
 CREATE INDEX IF NOT EXISTS idx_session_model_usage_model ON session_model_usage(model);
 CREATE INDEX IF NOT EXISTS idx_async_delegations_delivery
     ON async_delegations(delivery_state, completed_at);
-""" + REACH_OFFERS_SQL
+""" + REACH_OFFERS_SQL + BOT_THREAD_EVENTS_SQL
 
 # Indexes on later-added columns must run AFTER _reconcile_columns(), or executescript fails on legacy DBs.
 # sessions_runtime_ledger_delete_guard: every delete path in this release retires a session's ledger rows
