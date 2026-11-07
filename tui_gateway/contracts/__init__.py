@@ -14,6 +14,7 @@ from . import (
     i18n,
     liveness,
     machine,
+    permissions,
     profile_templates,
     profiles_vault_complete_foreign_subagents,
     projects_pets,
