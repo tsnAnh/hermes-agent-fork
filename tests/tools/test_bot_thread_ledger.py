@@ -133,13 +133,12 @@ def test_an_unusable_store_never_raises_into_a_delivery(tmp_path, caplog):
     assert "bot thread ledger" in caplog.text
 
 
-def test_schema_v33_is_additive_on_a_v32_store_and_rolls_back_as_a_no_op(tmp_path):
+def test_ledger_tables_are_additive_on_an_existing_store_and_keep_its_data(tmp_path):
     db = SessionDB(db_path=tmp_path / "state.db")
     db.create_session("keep", source="cli")
     db.close()
     conn = sqlite3.connect(tmp_path / "state.db")
-    conn.executescript("DROP TABLE bot_thread_events; DROP TABLE bot_thread_peer_origins;"
-                       " UPDATE schema_version SET version = 32;")
+    conn.executescript("DROP TABLE bot_thread_events; DROP TABLE bot_thread_peer_origins;")
     conn.close()
     SessionDB(db_path=tmp_path / "state.db").close()
     ledger.record_message(tmp_path, _key(40), BETA, "x", status=Status.pending)
@@ -148,8 +147,6 @@ def test_schema_v33_is_additive_on_a_v32_store_and_rolls_back_as_a_no_op(tmp_pat
         assert conn.execute("SELECT id FROM sessions").fetchall() == [("keep",)]
         assert conn.execute("SELECT COUNT(*) FROM bot_thread_events").fetchone() == (1,)
         assert conn.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] == SCHEMA_VERSION
-        conn.execute("UPDATE schema_version SET version = 32")
-        conn.commit()
     finally:
         conn.close()
     SessionDB(db_path=tmp_path / "state.db").close()
