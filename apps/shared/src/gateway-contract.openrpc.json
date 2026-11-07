@@ -1915,6 +1915,42 @@
       }
     },
     {
+      "name": "library.asset",
+      "summary": "Bytes of a library media item or file, base64, only for files the profile's library indexed.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/LibraryAssetParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/LibraryAssetResult"
+        }
+      }
+    },
+    {
+      "name": "library.list",
+      "summary": "Links, media and files a bot's conversations mention, newest first, deduplicated.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/LibraryListParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/LibraryListResult"
+        }
+      }
+    },
+    {
       "name": "llm.oneshot",
       "summary": "Stateless one-shot LLM completion (titles, ideas) on the session's or the task backend.",
       "params": [
@@ -23424,6 +23460,256 @@
           "enabled"
         ],
         "title": "LegacyPluginRow",
+        "type": "object"
+      },
+      "LibraryAssetParams": {
+        "additionalProperties": false,
+        "description": "``max_bytes`` defaults to 8 MB (max 16 MB). Images come back as a thumbnail of at most 512 px\nunless ``thumbnail`` is false.",
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "asset_ref": {
+            "title": "Asset Ref",
+            "type": "string"
+          },
+          "max_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Bytes"
+          },
+          "thumbnail": {
+            "default": true,
+            "title": "Thumbnail",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "asset_ref"
+        ],
+        "title": "LibraryAssetParams",
+        "type": "object"
+      },
+      "LibraryAssetResult": {
+        "additionalProperties": false,
+        "properties": {
+          "mime": {
+            "title": "Mime",
+            "type": "string"
+          },
+          "data_base64": {
+            "title": "Data Base64",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mime",
+          "data_base64",
+          "size"
+        ],
+        "title": "LibraryAssetResult",
+        "type": "object"
+      },
+      "LibraryItem": {
+        "additionalProperties": false,
+        "description": "``asset_ref`` is set only for a local file ``library.asset`` may serve; ``url`` for a link or a\nremote media item.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/LibraryItemKind"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "subtitle": {
+            "title": "Subtitle",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          },
+          "asset_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Asset Ref"
+          },
+          "mime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mime"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Size"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "subtitle",
+          "session_id",
+          "occurred_at"
+        ],
+        "title": "LibraryItem",
+        "type": "object"
+      },
+      "LibraryItemKind": {
+        "enum": [
+          "link",
+          "media",
+          "file"
+        ],
+        "title": "LibraryItemKind",
+        "type": "string"
+      },
+      "LibraryKindFilter": {
+        "enum": [
+          "all",
+          "media",
+          "links",
+          "files"
+        ],
+        "title": "LibraryKindFilter",
+        "type": "string"
+      },
+      "LibraryListParams": {
+        "additionalProperties": false,
+        "description": "``limit`` is clamped to 1..200. ``before`` is the ``next_before`` of the previous page.",
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/LibraryKindFilter",
+            "default": "all"
+          },
+          "limit": {
+            "default": 50,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Before"
+          }
+        },
+        "title": "LibraryListParams",
+        "type": "object"
+      },
+      "LibraryListResult": {
+        "additionalProperties": false,
+        "description": "``index_complete`` is false while a large history is still being indexed: ask again to see more.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LibraryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_before": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Next Before"
+          },
+          "index_complete": {
+            "default": true,
+            "title": "Index Complete",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "LibraryListResult",
         "type": "object"
       },
       "LiveSessionStatus": {

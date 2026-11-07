@@ -2023,6 +2023,46 @@ export interface ClientCapabilitiesResult {
   declines_not_shown?: boolean
   canonical_clarify_batch?: boolean
 }
+/** ``limit`` is clamped to 1..200. ``before`` is the ``next_before`` of the previous page. */
+export interface LibraryListParams {
+  profile?: string | null
+  kind?: LibraryKindFilter
+  limit?: number
+  before?: string | null
+}
+export type LibraryKindFilter = 'all' | 'media' | 'links' | 'files'
+/** ``index_complete`` is false while a large history is still being indexed: ask again to see more. */
+export interface LibraryListResult {
+  items: LibraryItem[]
+  next_before?: string | null
+  index_complete?: boolean
+}
+/** ``asset_ref`` is set only for a local file ``library.asset`` may serve; ``url`` for a link or a remote media item. */
+export interface LibraryItem {
+  id: string
+  kind: LibraryItemKind
+  title: string
+  subtitle: string
+  url?: string | null
+  asset_ref?: string | null
+  mime?: string | null
+  size?: number | null
+  session_id: string
+  occurred_at: string
+}
+export type LibraryItemKind = 'link' | 'media' | 'file'
+/** ``max_bytes`` defaults to 8 MB (max 16 MB). Images come back as a thumbnail of at most 512 px unless ``thumbnail`` is false. */
+export interface LibraryAssetParams {
+  profile?: string | null
+  asset_ref: string
+  max_bytes?: number | null
+  thumbnail?: boolean
+}
+export interface LibraryAssetResult {
+  mime: string
+  data_base64: string
+  size: number
+}
 /** Client→server method params / server→client request params. Unknown keys are rejected. */
 export type Params = Record<string, never>
 /** ``machine_kind`` is ``Spark``, ``Mac``, ``PC`` or ``computer``. ``nvidia_platform`` is ``products.nvidia_platform()``: ``rtx_spark``, ``dgx_spark``, ``discrete`` or null. ``locale`` is the OS account's first UI language, null when the OS has none. */
@@ -6514,6 +6554,10 @@ export interface RpcMethods {
   'learning.edit': { params: LearningEditParams; result: LearningMutationResult }
   /** Pre-render the /journey timeline (frames + legend/summary) so the TUI walks it locally. */
   'learning.frames': { params: LearningFramesParams; result: LearningFramesResult }
+  /** Bytes of a library media item or file, base64, only for files the profile's library indexed. */
+  'library.asset': { params: LibraryAssetParams; result: LibraryAssetResult }
+  /** Links, media and files a bot's conversations mention, newest first, deduplicated. */
+  'library.list': { params: LibraryListParams; result: LibraryListResult }
   /** Stateless one-shot LLM completion (titles, ideas) on the session's or the task backend. */
   'llm.oneshot': { params: LlmOneshotParams; result: LlmOneshotResult }
   /** Facts about the machine running this backend and its OS account, for the desktop first run. */
@@ -6955,6 +6999,8 @@ export const RPC_METHODS = [
   'learning.detail',
   'learning.edit',
   'learning.frames',
+  'library.asset',
+  'library.list',
   'llm.oneshot',
   'machine.facts',
   'mcp.catalog',
