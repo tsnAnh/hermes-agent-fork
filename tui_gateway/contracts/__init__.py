@@ -23,7 +23,7 @@ from . import (
     tools_commands,
     tools_mcp_plugins,
 )
-from . import canonical, canonical_reach
+from . import canonical, canonical_bot_threads, canonical_reach
 from .base import JsonValue, Params, Payload, Result, WireEnum
 from .registry import CANONICAL_METHODS, EVENTS, METHODS, SERVER_REQUESTS
 
