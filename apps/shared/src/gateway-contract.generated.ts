@@ -485,6 +485,108 @@ export interface ProjectFacts {
   verifyCommands: string[]
   contextFiles: string[]
 }
+export interface ProfilesRenameParams {
+  name: string
+  new_name: string
+}
+/** ``name`` is the canonical id after the rename; the primary bot keeps ``default`` and carries the new label in ``display_name``. */
+export interface ProfilesRenameResult {
+  ok: boolean
+  name: string
+  path: string
+  display_name?: string | null
+}
+export interface ProfilesDeleteParams {
+  name: string
+}
+/** ``settlement_pending`` means the home is already gone and only the durable identity cleanup is outstanding; ``retry_command`` finishes it. */
+export interface ProfilesDeleteResult {
+  ok: boolean
+  name: string
+  path: string
+  identity_settled?: boolean | null
+  settlement_pending?: boolean | null
+  retry_command?: string | null
+}
+/** One bot's Slack connection. Credentials are never echoed: only whether each is set. ``state`` is the gateway's verdict for the Slack adapter (``connected``, ``not_configured``, ``disabled``, ``pending_restart``, ``gateway_stopped``, ``startup_failed``, ...). */
+export interface MessagingSlackStatus {
+  profile: string
+  enabled: boolean
+  configured: boolean
+  gateway_running: boolean
+  state?: string | null
+  error_code?: string | null
+  error_message?: string | null
+  bot_token_set: boolean
+  app_token_set: boolean
+  allowed_users_set: boolean
+}
+/** ``bot_token`` (xoxb-) and ``app_token`` (xapp-, Socket Mode) are written to the bot's own .env only. ``allowed_users`` are Slack member IDs allowed to talk to the bot. */
+export interface MessagingSlackConnectParams {
+  profile?: string | null
+  bot_token: string
+  app_token: string
+  allowed_users?: string[] | null
+}
+/** The status after the write plus what became of the gateway: ``hot_served`` when a running multiplexer rebuilt the adapter, else a gateway restart (``restart_started``; refused while a chat is live: ``restart_busy``). */
+export interface MessagingSlackConnectResult {
+  profile: string
+  enabled: boolean
+  configured: boolean
+  gateway_running: boolean
+  state?: string | null
+  error_code?: string | null
+  error_message?: string | null
+  bot_token_set: boolean
+  app_token_set: boolean
+  allowed_users_set: boolean
+  hot_served: boolean
+  restart_started: boolean
+  restart_busy?: boolean | null
+  restart_error?: string | null
+}
+export interface MessagingSlackManifestParams {
+  profile?: string | null
+  display_name?: string | null
+}
+/** ``create_url`` opens Slack's create-from-manifest page with the bot's name already filled in. */
+export interface MessagingSlackManifestResult {
+  profile: string
+  bot_name: string
+  manifest: Record<string, unknown>
+  create_url: string
+}
+/** ``text`` is pasted free text, one fact per line (bullets, numbering and dates are stripped); ``target`` is the profile notes (``user``, the default) or the agent's own notes (``memory``). */
+export interface MemoryImportParams {
+  profile?: string | null
+  text: string
+  target?: MemoryImportTarget | null
+}
+export type MemoryImportTarget = 'user' | 'memory'
+/** Counts of the pasted lines: ``added`` landed; ``duplicates`` were already remembered (or repeated), ``too_long`` exceeded one entry, ``blocked`` failed the memory safety scan, ``over_budget`` no longer fit the store's size cap (the first that did not fit and every one after it). ``usage`` is the store's fill. */
+export interface MemoryImportResult {
+  profile: string
+  target: MemoryImportTarget
+  candidates: number
+  added: number
+  duplicates: number
+  too_long: number
+  blocked: number
+  over_budget: number
+  usage: string
+  entry_count: number
+}
+/** The caller's own native sign-in tokens: holding the refresh token is the proof of ownership. */
+export interface AuthRevokeSelfParams {
+  refresh_token: string
+  access_token?: string | null
+}
+/** ``providers_revoked`` counts the sign-in providers that accepted the revocation; ``forgotten`` the recorded native tokens (refresh and access) the gateway stopped honouring at once. */
+export interface AuthRevokeSelfResult {
+  ok: boolean
+  providers_revoked: number
+  forgotten: number
+}
 export interface BotTeachStatus {
   available: boolean
   reason?: string | null
@@ -1457,6 +1559,7 @@ export interface DisplayStatus {
   image_switch?: DisplayImageSwitch | null
   lease: DisplayLease
   profile_key: string
+  disk?: DisplayDisk | null
 }
 /** A persisted Docker sandbox kept on the previous default image; the user decides the switch. */
 export interface DisplayImageSwitch {
@@ -1476,6 +1579,14 @@ export interface DisplayLease {
   ask_at?: number
 }
 export type LeaseHolder = 'agent' | 'human'
+/** The disk the bot's screen and browser data live on: ``critical`` below 512 MB free or 97% used, ``low`` below 2 GB free or 90% used. */
+export interface DisplayDisk {
+  level: DisplayDiskLevel
+  free_mb: number
+  total_mb: number
+  used_pct: number
+}
+export type DisplayDiskLevel = 'normal' | 'low' | 'critical'
 /** ``data_url`` is null while the screen is stopped or while a human holds the lease (``suppressed``): the frame may show what they are typing. */
 export interface DisplayThumbnailResult {
   data_url?: string | null
@@ -1504,7 +1615,35 @@ export interface DisplayStopResult {
   image_switch?: DisplayImageSwitch | null
   lease: DisplayLease
   profile_key: string
+  disk?: DisplayDisk | null
   stopped: boolean
+}
+export interface DisplayResetParams {
+  profile?: string | null
+  force?: boolean | null
+}
+/** ``reset`` names what was wiped (the desktop settings ``xdg`` and the ``browser-profile`` with its logins); an already-clean screen answers an empty list. */
+export interface DisplayResetResult {
+  profile: string
+  supported: boolean
+  installed: boolean
+  missing: string[]
+  running: boolean
+  pid?: number | null
+  display?: string | null
+  socket?: string | null
+  geometry: string
+  install_command?: string | null
+  browser?: string | null
+  blocker?: string | null
+  memory_available_mb?: number | null
+  memory_limit_mb?: number | null
+  placement?: string
+  image_switch?: DisplayImageSwitch | null
+  lease: DisplayLease
+  profile_key: string
+  disk?: DisplayDisk | null
+  reset: string[]
 }
 export interface DisplayObserveParams {
   profile?: string | null
@@ -1529,6 +1668,7 @@ export interface DisplayObserveResult {
   image_switch?: DisplayImageSwitch | null
   lease: DisplayLease
   profile_key: string
+  disk?: DisplayDisk | null
   ticket: string
   path: string
   viewer_id: string
@@ -1556,6 +1696,7 @@ export interface DisplaySwitchSandboxImageResult {
   image_switch?: DisplayImageSwitch | null
   lease: DisplayLease
   profile_key: string
+  disk?: DisplayDisk | null
   docker_image: string
 }
 export interface DisplayInstallResult {
@@ -2101,6 +2242,7 @@ export interface ModelDisconnectResult {
 export interface ProfilesListParams {
   profile?: string | null
   include_sessions?: boolean | string | null
+  include_routines?: boolean | string | null
 }
 /** ``bot_mode_protocol`` tells clients this backend injects the teammate protocol itself; ``install_id`` (as on ``/api/status``) names the machine that answered; ``bot_onboarding`` says this backend marks new bots with ``onboarding_pending`` and answers ``profiles.onboard``. */
 export interface ProfilesListResult {
@@ -2129,6 +2271,7 @@ export interface ProfileRow {
   ui_meta?: Record<string, unknown> | null
   has_avatar?: boolean
   onboarding_pending?: boolean
+  routines_enabled?: number | null
 }
 /** Newest human-facing session of a profile (``_latest_profile_session_rows``). */
 export interface ProfileSessionPreview {
@@ -2162,15 +2305,18 @@ export interface ProfileCanonicalSession {
 export interface BotAboutYouGetParams {
   profile?: string | null
 }
+/** ``timezone_auto``: the client keeps ``timezone`` in step with its device and pushes it on change. */
 export interface BotAboutYouFacts {
   name?: string
   timezone?: string
+  timezone_auto?: boolean
 }
-/** A key left out is unchanged; ``null`` or blank clears it. */
+/** A key left out is unchanged; ``null`` or blank clears it (``timezone_auto`` null reads as off). */
 export interface BotAboutYouSetParams {
   profile?: string | null
   name?: string | null
   timezone?: string | null
+  timezone_auto?: boolean | null
 }
 /** ``clone_from`` omitted = fresh profile + bundled skills; ``mirror_credentials`` defaults on so a headless bot has a provider. */
 export interface ProfilesCreateParams {
@@ -4210,6 +4356,8 @@ export interface CronJobRow {
   provider?: string | null
   base_url?: string | null
   schedule?: string
+  schedule_text?: string | null
+  schedule_timezone?: string | null
   repeat?: number | string | null
   deliver?: string | null
   next_run_at?: string | null
@@ -5532,6 +5680,7 @@ export interface CanonicalProfileRow {
   ui_meta?: Record<string, unknown> | null
   has_avatar?: boolean
   onboarding_pending?: boolean
+  routines_enabled?: number | null
 }
 export interface CanonicalAttachedImageResult {
   name?: string | null
@@ -5867,6 +6016,7 @@ export interface DisplayStatusPayload {
   image_switch?: DisplayImageSwitch | null
   lease: DisplayLease
   profile_key: string
+  disk?: DisplayDisk | null
 }
 export interface DisplayLeasePayload {
   profile_key: string
@@ -6340,6 +6490,8 @@ export interface RpcMethods {
   'approval.received': { params: ApprovalReceivedParams; result: ApprovalReceivedResult }
   /** Deliver the user's decision on a dangerous command (falls back to durable identity on a stale sid). */
   'approval.respond': { params: ApprovalRespondParams; result: ApprovalRespondResult }
+  /** Sign this device out on the gateway: revoke its refresh token with the sign-in providers and drop it from the native sign-in record. */
+  'auth.revoke_self': { params: AuthRevokeSelfParams; result: AuthRevokeSelfResult }
   /** Enable/disable auto top-up with its threshold and reload amount (billing:manage). */
   'billing.auto_reload': { params: BillingAutoReloadParams; result: BillingMutationResult }
   /** Start a one-off top-up charge (billing:manage, idempotent). */
@@ -6448,6 +6600,8 @@ export interface RpcMethods {
   'display.lease.resolve': { params: DisplayLeaseResolveParams; result: DisplayLeaseResult }
   /** Mint a single-use ticket for /api/display/ws and the server-minted viewer id for this connection. */
   'display.observe': { params: DisplayObserveParams; result: DisplayObserveResult }
+  /** Stop the screen and wipe its desktop settings and browser data. Refused (5300, code viewer_mismatch) while a human holds unless force; refused for a sandboxed screen. */
+  'display.reset': { params: DisplayResetParams; result: DisplayResetResult }
   /** Start this profile's Xvnc + Xfce (idempotent); blocks until the display is published. */
   'display.start': { params: ProfileParams; result: DisplayStatus }
   /** Runtime + lease snapshot for this profile's screen. */
@@ -6570,8 +6724,18 @@ export interface RpcMethods {
   'mcp.servers.status': { params: ProfileParams; result: McpServersStatusResult }
   /** Connect, list tools, disconnect — an OAuth server with no token on disk is reported as not ok. */
   'mcp.servers.test': { params: McpServerNameParams; result: McpServersTestResult }
+  /** Import pasted text (a ChatGPT or Claude memory export) into a bot's memory: deduped, size-capped, scanned. */
+  'memory.import': { params: MemoryImportParams; result: MemoryImportResult }
   /** Set/clear one author's emoji reaction on a message; returns the row's full reaction list. */
   'message.react': { params: MessageReactParams; result: MessageReactResult }
+  /** Validate and save a bot's Slack tokens, enable the adapter and reload it. */
+  'messaging.slack.connect': { params: MessagingSlackConnectParams; result: MessagingSlackConnectResult }
+  /** Remove a bot's Slack tokens and disable the adapter. */
+  'messaging.slack.disconnect': { params: ProfileParams; result: MessagingSlackConnectResult }
+  /** Slack app manifest named after the bot, plus the api.slack.com link that creates the app from it. */
+  'messaging.slack.manifest': { params: MessagingSlackManifestParams; result: MessagingSlackManifestResult }
+  /** Slack connection state of one bot (never carries a token). */
+  'messaging.slack.status': { params: ProfileParams; result: MessagingSlackStatus }
   /** Remove every credential (env keys and OAuth state) for a provider. */
   'model.disconnect': { params: ModelDisconnectParams; result: ModelDisconnectResult }
   /** Provider/model inventory for the picker, layered over the session's live provider when given. */
@@ -6640,6 +6804,8 @@ export interface RpcMethods {
   'profiles.configure': { params: ProfilesConfigureParams; result: ProfilesConfigureResult }
   /** Create a profile (ws twin of POST /api/profiles), mirroring launch credentials by default. */
   'profiles.create': { params: ProfilesCreateParams; result: ProfilesCreateResult }
+  /** Delete a bot and its home (ws twin of DELETE /api/profiles/{name}); refuses the primary bot and the bot serving the connection. */
+  'profiles.delete': { params: ProfilesDeleteParams; result: ProfilesDeleteResult }
   /** Everything the profile editor shows: soul, model pin, skills, toolsets, MCP servers. */
   'profiles.describe': { params: ProfileNameParams; result: ProfilesDescribeResult }
   /** A profile asset as a data URL. */
@@ -6650,6 +6816,8 @@ export interface RpcMethods {
   'profiles.list': { params: ProfilesListParams; result: ProfilesListResult }
   /** Answer or dismiss a new bot's first-run question and clear its onboarding_pending flag. */
   'profiles.onboard': { params: ProfilesOnboardParams; result: ProfilesOnboardResult }
+  /** Rename a bot (ws twin of PATCH /api/profiles/{name}); the primary bot only changes its display name. */
+  'profiles.rename': { params: ProfilesRenameParams; result: ProfilesRenameResult }
   /** Store or clear a profile asset (avatar) atomically. */
   'profiles.set_asset': { params: ProfilesSetAssetParams; result: ProfilesSetAssetResult }
   /** A bot's shareable template (.hermesbot, base64): setup only, never history or secrets. */
@@ -6883,6 +7051,7 @@ export const RPC_METHODS = [
   'approval.pending',
   'approval.received',
   'approval.respond',
+  'auth.revoke_self',
   'billing.auto_reload',
   'billing.charge',
   'billing.charge_status',
@@ -6937,6 +7106,7 @@ export const RPC_METHODS = [
   'display.lease.release',
   'display.lease.resolve',
   'display.observe',
+  'display.reset',
   'display.start',
   'display.status',
   'display.stop',
@@ -6998,7 +7168,12 @@ export const RPC_METHODS = [
   'mcp.servers.set_api_key',
   'mcp.servers.status',
   'mcp.servers.test',
+  'memory.import',
   'message.react',
+  'messaging.slack.connect',
+  'messaging.slack.disconnect',
+  'messaging.slack.manifest',
+  'messaging.slack.status',
   'model.disconnect',
   'model.options',
   'model.save_key',
@@ -7033,11 +7208,13 @@ export const RPC_METHODS = [
   'process.stop',
   'profiles.configure',
   'profiles.create',
+  'profiles.delete',
   'profiles.describe',
   'profiles.get_asset',
   'profiles.identity.undo',
   'profiles.list',
   'profiles.onboard',
+  'profiles.rename',
   'profiles.set_asset',
   'profiles.template.export',
   'profiles.template.import',

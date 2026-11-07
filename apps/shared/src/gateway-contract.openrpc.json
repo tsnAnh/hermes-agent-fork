@@ -79,6 +79,24 @@
       }
     },
     {
+      "name": "auth.revoke_self",
+      "summary": "Sign this device out on the gateway: revoke its refresh token with the sign-in providers and drop it from the native sign-in record.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/AuthRevokeSelfParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/AuthRevokeSelfResult"
+        }
+      }
+    },
+    {
       "name": "billing.auto_reload",
       "summary": "Enable/disable auto top-up with its threshold and reload amount (billing:manage).",
       "params": [
@@ -1047,6 +1065,24 @@
         "name": "result",
         "schema": {
           "$ref": "#/components/schemas/DisplayObserveResult"
+        }
+      }
+    },
+    {
+      "name": "display.reset",
+      "summary": "Stop the screen and wipe its desktop settings and browser data. Refused (5300, code viewer_mismatch) while a human holds unless force; refused for a sandboxed screen.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/DisplayResetParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/DisplayResetResult"
         }
       }
     },
@@ -2149,6 +2185,24 @@
       }
     },
     {
+      "name": "memory.import",
+      "summary": "Import pasted text (a ChatGPT or Claude memory export) into a bot's memory: deduped, size-capped, scanned.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/MemoryImportParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/MemoryImportResult"
+        }
+      }
+    },
+    {
       "name": "message.react",
       "summary": "Set/clear one author's emoji reaction on a message; returns the row's full reaction list.",
       "params": [
@@ -2163,6 +2217,78 @@
         "name": "result",
         "schema": {
           "$ref": "#/components/schemas/MessageReactResult"
+        }
+      }
+    },
+    {
+      "name": "messaging.slack.connect",
+      "summary": "Validate and save a bot's Slack tokens, enable the adapter and reload it.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/MessagingSlackConnectParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/MessagingSlackConnectResult"
+        }
+      }
+    },
+    {
+      "name": "messaging.slack.disconnect",
+      "summary": "Remove a bot's Slack tokens and disable the adapter.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/ProfileParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/MessagingSlackConnectResult"
+        }
+      }
+    },
+    {
+      "name": "messaging.slack.manifest",
+      "summary": "Slack app manifest named after the bot, plus the api.slack.com link that creates the app from it.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/MessagingSlackManifestParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/MessagingSlackManifestResult"
+        }
+      }
+    },
+    {
+      "name": "messaging.slack.status",
+      "summary": "Slack connection state of one bot (never carries a token).",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/ProfileParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/MessagingSlackStatus"
         }
       }
     },
@@ -2779,6 +2905,24 @@
       }
     },
     {
+      "name": "profiles.delete",
+      "summary": "Delete a bot and its home (ws twin of DELETE /api/profiles/{name}); refuses the primary bot and the bot serving the connection.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/ProfilesDeleteParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ProfilesDeleteResult"
+        }
+      }
+    },
+    {
       "name": "profiles.describe",
       "summary": "Everything the profile editor shows: soul, model pin, skills, toolsets, MCP servers.",
       "params": [
@@ -2865,6 +3009,24 @@
         "name": "result",
         "schema": {
           "$ref": "#/components/schemas/ProfilesOnboardResult"
+        }
+      }
+    },
+    {
+      "name": "profiles.rename",
+      "summary": "Rename a bot (ws twin of PATCH /api/profiles/{name}); the primary bot only changes its display name.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/ProfilesRenameParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ProfilesRenameResult"
         }
       }
     },
@@ -6103,6 +6265,58 @@
         "title": "AttachedImageResult",
         "type": "object"
       },
+      "AuthRevokeSelfParams": {
+        "additionalProperties": false,
+        "description": "The caller's own native sign-in tokens: holding the refresh token is the proof of ownership.",
+        "properties": {
+          "refresh_token": {
+            "title": "Refresh Token",
+            "type": "string"
+          },
+          "access_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Access Token"
+          }
+        },
+        "required": [
+          "refresh_token"
+        ],
+        "title": "AuthRevokeSelfParams",
+        "type": "object"
+      },
+      "AuthRevokeSelfResult": {
+        "additionalProperties": false,
+        "description": "``providers_revoked`` counts the sign-in providers that accepted the revocation; ``forgotten`` the\nrecorded native tokens (refresh and access) the gateway stopped honouring at once.",
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "providers_revoked": {
+            "title": "Providers Revoked",
+            "type": "integer"
+          },
+          "forgotten": {
+            "title": "Forgotten",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ok",
+          "providers_revoked",
+          "forgotten"
+        ],
+        "title": "AuthRevokeSelfResult",
+        "type": "object"
+      },
       "AutoContinue": {
         "additionalProperties": false,
         "description": "A crash-interrupted turn was scheduled to continue right after this resume.",
@@ -7665,6 +7879,7 @@
       },
       "BotAboutYouFacts": {
         "additionalProperties": false,
+        "description": "``timezone_auto``: the client keeps ``timezone`` in step with its device and pushes it on change.",
         "properties": {
           "name": {
             "default": "",
@@ -7675,6 +7890,11 @@
             "default": "",
             "title": "Timezone",
             "type": "string"
+          },
+          "timezone_auto": {
+            "default": false,
+            "title": "Timezone Auto",
+            "type": "boolean"
           }
         },
         "title": "BotAboutYouFacts",
@@ -7701,7 +7921,7 @@
       },
       "BotAboutYouSetParams": {
         "additionalProperties": false,
-        "description": "A key left out is unchanged; ``null`` or blank clears it.",
+        "description": "A key left out is unchanged; ``null`` or blank clears it (``timezone_auto`` null reads as off).",
         "properties": {
           "profile": {
             "anyOf": [
@@ -7738,6 +7958,18 @@
             ],
             "default": null,
             "title": "Timezone"
+          },
+          "timezone_auto": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Timezone Auto"
           }
         },
         "title": "BotAboutYouSetParams",
@@ -10409,6 +10641,18 @@
             "default": false,
             "title": "Onboarding Pending",
             "type": "boolean"
+          },
+          "routines_enabled": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Routines Enabled"
           }
         },
         "required": [
@@ -16768,6 +17012,30 @@
             "title": "Schedule",
             "type": "string"
           },
+          "schedule_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Schedule Text"
+          },
+          "schedule_timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Schedule Timezone"
+          },
           "repeat": {
             "anyOf": [
               {
@@ -18209,6 +18477,44 @@
         "title": "DispatchType",
         "type": "string"
       },
+      "DisplayDisk": {
+        "additionalProperties": false,
+        "description": "The disk the bot's screen and browser data live on: ``critical`` below 512 MB free or 97% used,\n``low`` below 2 GB free or 90% used.",
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/DisplayDiskLevel"
+          },
+          "free_mb": {
+            "title": "Free Mb",
+            "type": "integer"
+          },
+          "total_mb": {
+            "title": "Total Mb",
+            "type": "integer"
+          },
+          "used_pct": {
+            "title": "Used Pct",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "level",
+          "free_mb",
+          "total_mb",
+          "used_pct"
+        ],
+        "title": "DisplayDisk",
+        "type": "object"
+      },
+      "DisplayDiskLevel": {
+        "enum": [
+          "normal",
+          "low",
+          "critical"
+        ],
+        "title": "DisplayDiskLevel",
+        "type": "string"
+      },
       "DisplayImageSwitch": {
         "additionalProperties": false,
         "description": "A persisted Docker sandbox kept on the previous default image; the user decides the switch.",
@@ -18705,6 +19011,17 @@
             "title": "Profile Key",
             "type": "string"
           },
+          "disk": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DisplayDisk"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "ticket": {
             "title": "Ticket",
             "type": "string"
@@ -18732,6 +19049,220 @@
           "viewer_id"
         ],
         "title": "DisplayObserveResult",
+        "type": "object"
+      },
+      "DisplayResetParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "force": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Force"
+          }
+        },
+        "title": "DisplayResetParams",
+        "type": "object"
+      },
+      "DisplayResetResult": {
+        "additionalProperties": false,
+        "description": "``reset`` names what was wiped (the desktop settings ``xdg`` and the ``browser-profile`` with its\nlogins); an already-clean screen answers an empty list.",
+        "properties": {
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
+          },
+          "installed": {
+            "title": "Installed",
+            "type": "boolean"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "running": {
+            "title": "Running",
+            "type": "boolean"
+          },
+          "pid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pid"
+          },
+          "display": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display"
+          },
+          "socket": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Socket"
+          },
+          "geometry": {
+            "title": "Geometry",
+            "type": "string"
+          },
+          "install_command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Install Command"
+          },
+          "browser": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Browser"
+          },
+          "blocker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Blocker"
+          },
+          "memory_available_mb": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Memory Available Mb"
+          },
+          "memory_limit_mb": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Memory Limit Mb"
+          },
+          "placement": {
+            "default": "gateway",
+            "title": "Placement",
+            "type": "string"
+          },
+          "image_switch": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DisplayImageSwitch"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "lease": {
+            "$ref": "#/components/schemas/DisplayLease"
+          },
+          "profile_key": {
+            "title": "Profile Key",
+            "type": "string"
+          },
+          "disk": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DisplayDisk"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "reset": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reset",
+            "type": "array"
+          }
+        },
+        "required": [
+          "profile",
+          "supported",
+          "installed",
+          "missing",
+          "running",
+          "geometry",
+          "lease",
+          "profile_key",
+          "reset"
+        ],
+        "title": "DisplayResetResult",
         "type": "object"
       },
       "DisplayStatus": {
@@ -18883,6 +19414,17 @@
           "profile_key": {
             "title": "Profile Key",
             "type": "string"
+          },
+          "disk": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DisplayDisk"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -19046,6 +19588,17 @@
           "profile_key": {
             "title": "Profile Key",
             "type": "string"
+          },
+          "disk": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DisplayDisk"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -19241,6 +19794,17 @@
             "title": "Profile Key",
             "type": "string"
           },
+          "disk": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DisplayDisk"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "stopped": {
             "title": "Stopped",
             "type": "boolean"
@@ -19432,6 +19996,17 @@
           "profile_key": {
             "title": "Profile Key",
             "type": "string"
+          },
+          "disk": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DisplayDisk"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           },
           "docker_image": {
             "title": "Docker Image",
@@ -24948,6 +25523,111 @@
         "title": "McpServersTestResult",
         "type": "object"
       },
+      "MemoryImportParams": {
+        "additionalProperties": false,
+        "description": "``text`` is pasted free text, one fact per line (bullets, numbering and dates are stripped); ``target``\nis the profile notes (``user``, the default) or the agent's own notes (``memory``).",
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemoryImportTarget"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "MemoryImportParams",
+        "type": "object"
+      },
+      "MemoryImportResult": {
+        "additionalProperties": false,
+        "description": "Counts of the pasted lines: ``added`` landed; ``duplicates`` were already remembered (or repeated),\n``too_long`` exceeded one entry, ``blocked`` failed the memory safety scan, ``over_budget`` no longer fit\nthe store's size cap (the first that did not fit and every one after it). ``usage`` is the store's fill.",
+        "properties": {
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/MemoryImportTarget"
+          },
+          "candidates": {
+            "title": "Candidates",
+            "type": "integer"
+          },
+          "added": {
+            "title": "Added",
+            "type": "integer"
+          },
+          "duplicates": {
+            "title": "Duplicates",
+            "type": "integer"
+          },
+          "too_long": {
+            "title": "Too Long",
+            "type": "integer"
+          },
+          "blocked": {
+            "title": "Blocked",
+            "type": "integer"
+          },
+          "over_budget": {
+            "title": "Over Budget",
+            "type": "integer"
+          },
+          "usage": {
+            "title": "Usage",
+            "type": "string"
+          },
+          "entry_count": {
+            "title": "Entry Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "profile",
+          "target",
+          "candidates",
+          "added",
+          "duplicates",
+          "too_long",
+          "blocked",
+          "over_budget",
+          "usage",
+          "entry_count"
+        ],
+        "title": "MemoryImportResult",
+        "type": "object"
+      },
+      "MemoryImportTarget": {
+        "enum": [
+          "user",
+          "memory"
+        ],
+        "title": "MemoryImportTarget",
+        "type": "string"
+      },
       "MessageCompletePayload": {
         "additionalProperties": false,
         "description": "``prompt_turn._complete_turn_payload`` / ``session_auto_continue._emit_terminal_turn_error`` /\n``agent_callbacks._mirror_subagent_to_child`` (child watch mirror: ``text`` only) /\n``compute_host_bridge`` (``text`` + ``status``).",
@@ -25501,6 +26181,311 @@
           }
         },
         "title": "MessageStartPayload",
+        "type": "object"
+      },
+      "MessagingSlackConnectParams": {
+        "additionalProperties": false,
+        "description": "``bot_token`` (xoxb-) and ``app_token`` (xapp-, Socket Mode) are written to the bot's own .env only.\n``allowed_users`` are Slack member IDs allowed to talk to the bot.",
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "bot_token": {
+            "title": "Bot Token",
+            "type": "string"
+          },
+          "app_token": {
+            "title": "App Token",
+            "type": "string"
+          },
+          "allowed_users": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Allowed Users"
+          }
+        },
+        "required": [
+          "bot_token",
+          "app_token"
+        ],
+        "title": "MessagingSlackConnectParams",
+        "type": "object"
+      },
+      "MessagingSlackConnectResult": {
+        "additionalProperties": false,
+        "description": "The status after the write plus what became of the gateway: ``hot_served`` when a running multiplexer\nrebuilt the adapter, else a gateway restart (``restart_started``; refused while a chat is live:\n``restart_busy``).",
+        "properties": {
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "gateway_running": {
+            "title": "Gateway Running",
+            "type": "boolean"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "State"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error Code"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error Message"
+          },
+          "bot_token_set": {
+            "title": "Bot Token Set",
+            "type": "boolean"
+          },
+          "app_token_set": {
+            "title": "App Token Set",
+            "type": "boolean"
+          },
+          "allowed_users_set": {
+            "title": "Allowed Users Set",
+            "type": "boolean"
+          },
+          "hot_served": {
+            "title": "Hot Served",
+            "type": "boolean"
+          },
+          "restart_started": {
+            "title": "Restart Started",
+            "type": "boolean"
+          },
+          "restart_busy": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Restart Busy"
+          },
+          "restart_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Restart Error"
+          }
+        },
+        "required": [
+          "profile",
+          "enabled",
+          "configured",
+          "gateway_running",
+          "bot_token_set",
+          "app_token_set",
+          "allowed_users_set",
+          "hot_served",
+          "restart_started"
+        ],
+        "title": "MessagingSlackConnectResult",
+        "type": "object"
+      },
+      "MessagingSlackManifestParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display Name"
+          }
+        },
+        "title": "MessagingSlackManifestParams",
+        "type": "object"
+      },
+      "MessagingSlackManifestResult": {
+        "additionalProperties": false,
+        "description": "``create_url`` opens Slack's create-from-manifest page with the bot's name already filled in.",
+        "properties": {
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          },
+          "bot_name": {
+            "title": "Bot Name",
+            "type": "string"
+          },
+          "manifest": {
+            "additionalProperties": true,
+            "title": "Manifest",
+            "type": "object"
+          },
+          "create_url": {
+            "title": "Create Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile",
+          "bot_name",
+          "manifest",
+          "create_url"
+        ],
+        "title": "MessagingSlackManifestResult",
+        "type": "object"
+      },
+      "MessagingSlackStatus": {
+        "additionalProperties": false,
+        "description": "One bot's Slack connection. Credentials are never echoed: only whether each is set. ``state`` is the\ngateway's verdict for the Slack adapter (``connected``, ``not_configured``, ``disabled``, ``pending_restart``,\n``gateway_stopped``, ``startup_failed``, ...).",
+        "properties": {
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "gateway_running": {
+            "title": "Gateway Running",
+            "type": "boolean"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "State"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error Code"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error Message"
+          },
+          "bot_token_set": {
+            "title": "Bot Token Set",
+            "type": "boolean"
+          },
+          "app_token_set": {
+            "title": "App Token Set",
+            "type": "boolean"
+          },
+          "allowed_users_set": {
+            "title": "Allowed Users Set",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "profile",
+          "enabled",
+          "configured",
+          "gateway_running",
+          "bot_token_set",
+          "app_token_set",
+          "allowed_users_set"
+        ],
+        "title": "MessagingSlackStatus",
         "type": "object"
       },
       "MoaAggregatingPayload": {
@@ -31098,6 +32083,18 @@
             "default": false,
             "title": "Onboarding Pending",
             "type": "boolean"
+          },
+          "routines_enabled": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Routines Enabled"
           }
         },
         "required": [
@@ -31797,6 +32794,81 @@
         "title": "ProfilesCreateResult",
         "type": "object"
       },
+      "ProfilesDeleteParams": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ProfilesDeleteParams",
+        "type": "object"
+      },
+      "ProfilesDeleteResult": {
+        "additionalProperties": false,
+        "description": "``settlement_pending`` means the home is already gone and only the durable identity cleanup is\noutstanding; ``retry_command`` finishes it.",
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "identity_settled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Identity Settled"
+          },
+          "settlement_pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Settlement Pending"
+          },
+          "retry_command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retry Command"
+          }
+        },
+        "required": [
+          "ok",
+          "name",
+          "path"
+        ],
+        "title": "ProfilesDeleteResult",
+        "type": "object"
+      },
       "ProfilesDescribeResult": {
         "additionalProperties": false,
         "description": "Editor snapshot; ``toolsets_pinned`` says whether ``tools.enabled_toolsets`` is explicit.",
@@ -32036,6 +33108,21 @@
             ],
             "default": null,
             "title": "Include Sessions"
+          },
+          "include_routines": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Include Routines"
           }
         },
         "title": "ProfilesListParams",
@@ -32167,6 +33254,62 @@
           }
         },
         "title": "ProfilesOnboardResult",
+        "type": "object"
+      },
+      "ProfilesRenameParams": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "new_name": {
+            "title": "New Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "new_name"
+        ],
+        "title": "ProfilesRenameParams",
+        "type": "object"
+      },
+      "ProfilesRenameResult": {
+        "additionalProperties": false,
+        "description": "``name`` is the canonical id after the rename; the primary bot keeps ``default`` and carries the\nnew label in ``display_name``.",
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display Name"
+          }
+        },
+        "required": [
+          "ok",
+          "name",
+          "path"
+        ],
+        "title": "ProfilesRenameResult",
         "type": "object"
       },
       "ProfilesSetAssetParams": {
