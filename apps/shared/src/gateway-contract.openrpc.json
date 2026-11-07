@@ -7,6 +7,24 @@
   },
   "methods": [
     {
+      "name": "account.subscriptions",
+      "summary": "Every model-provider credential the profile holds (credential pool plus standalone logins and keys), active provider first then subscriptions then API keys, each with its usage windows and recent spend. refresh=false answers from the usage cache with no network call; refresh=true fetches all accounts concurrently within a 10s bound.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/AccountSubscriptionsParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/AccountSubscriptionsResult"
+        }
+      }
+    },
+    {
       "name": "agents.list",
       "summary": "Registry-wide background process summary for ``/agents``.",
       "params": [
@@ -5035,6 +5053,198 @@
           "type"
         ],
         "title": "AccountOwner",
+        "type": "object"
+      },
+      "AccountSubscription": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_label": {
+            "title": "Provider Label",
+            "type": "string"
+          },
+          "account_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Account Label"
+          },
+          "kind": {
+            "enum": [
+              "subscription",
+              "api_key"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Plan"
+          },
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "state": {
+            "enum": [
+              "ready",
+              "limited",
+              "unknown",
+              "unavailable"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderUsageWindow"
+            },
+            "title": "Windows",
+            "type": "array"
+          },
+          "spend": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AccountSubscriptionSpend"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Unavailable Reason"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fetched At"
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "provider_label",
+          "kind",
+          "active",
+          "state"
+        ],
+        "title": "AccountSubscription",
+        "type": "object"
+      },
+      "AccountSubscriptionSpend": {
+        "additionalProperties": false,
+        "properties": {
+          "period_days": {
+            "title": "Period Days",
+            "type": "integer"
+          },
+          "usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Usd"
+          },
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "period_days",
+          "input_tokens",
+          "output_tokens"
+        ],
+        "title": "AccountSubscriptionSpend",
+        "type": "object"
+      },
+      "AccountSubscriptionsParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "refresh": {
+            "default": false,
+            "title": "Refresh",
+            "type": "boolean"
+          }
+        },
+        "title": "AccountSubscriptionsParams",
+        "type": "object"
+      },
+      "AccountSubscriptionsResult": {
+        "additionalProperties": false,
+        "properties": {
+          "subscriptions": {
+            "items": {
+              "$ref": "#/components/schemas/AccountSubscription"
+            },
+            "title": "Subscriptions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "subscriptions"
+        ],
+        "title": "AccountSubscriptionsResult",
         "type": "object"
       },
       "ActiveIdResult": {

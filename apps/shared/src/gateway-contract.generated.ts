@@ -4809,6 +4809,33 @@ export interface PluginCatalogLookupEntry {
   subdir: string
   tier?: string
 }
+export interface AccountSubscriptionsParams {
+  profile?: string | null
+  refresh?: boolean
+}
+export interface AccountSubscriptionsResult {
+  subscriptions: AccountSubscription[]
+}
+export interface AccountSubscription {
+  id: string
+  provider: string
+  provider_label: string
+  account_label?: string | null
+  kind: 'subscription' | 'api_key'
+  plan?: string | null
+  active: boolean
+  state: 'ready' | 'limited' | 'unknown' | 'unavailable'
+  windows?: ProviderUsageWindow[]
+  spend?: AccountSubscriptionSpend | null
+  unavailable_reason?: string | null
+  fetched_at?: string | null
+}
+export interface AccountSubscriptionSpend {
+  period_days: number
+  usd?: number | null
+  input_tokens: number
+  output_tokens: number
+}
 export interface GroupsAttachmentUploadParams {
   profile?: string | null
   room_id: string
@@ -6302,6 +6329,8 @@ export type ConnectorErrorReason = 'INVALID_PARAMS' | 'NOT_OWNER' | 'UNSUPPORTED
 
 // ── Client→server methods ──
 export interface RpcMethods {
+  /** Every model-provider credential the profile holds (credential pool plus standalone logins and keys), active provider first then subscriptions then API keys, each with its usage windows and recent spend. refresh=false answers from the usage cache with no network call; refresh=true fetches all accounts concurrently within a 10s bound. */
+  'account.subscriptions': { params: AccountSubscriptionsParams; result: AccountSubscriptionsResult }
   /** Registry-wide background process summary for ``/agents``. */
   'agents.list': { params: AgentsListParams; result: AgentsListResult }
   /** Replay the approvals still waiting on this session (reconnect / polling). */
@@ -6849,6 +6878,7 @@ export interface RpcMethods {
 }
 export type RpcMethod = keyof RpcMethods
 export const RPC_METHODS = [
+  'account.subscriptions',
   'agents.list',
   'approval.pending',
   'approval.received',
