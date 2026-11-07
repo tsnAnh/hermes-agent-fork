@@ -13034,6 +13034,11 @@
             "title": "Accepts Offers",
             "type": "boolean"
           },
+          "device_tools": {
+            "default": false,
+            "title": "Device Tools",
+            "type": "boolean"
+          },
           "attention": {
             "default": "foreground",
             "enum": [
@@ -18055,6 +18060,337 @@
           "max_concurrent_children"
         ],
         "title": "DelegationStatusResult",
+        "type": "object"
+      },
+      "DeviceConnectorId": {
+        "enum": [
+          "calendar",
+          "home",
+          "reminders",
+          "contacts",
+          "location",
+          "alarms"
+        ],
+        "title": "DeviceConnectorId",
+        "type": "string"
+      },
+      "DeviceConnectorState": {
+        "enum": [
+          "allowed",
+          "ask",
+          "off"
+        ],
+        "title": "DeviceConnectorState",
+        "type": "string"
+      },
+      "DeviceConnectorStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/DeviceConnectorId"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "subtitle": {
+            "title": "Subtitle",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/DeviceConnectorState"
+          },
+          "os_permission": {
+            "$ref": "#/components/schemas/DeviceOsPermission"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "subtitle",
+          "state",
+          "os_permission"
+        ],
+        "title": "DeviceConnectorStatus",
+        "type": "object"
+      },
+      "DeviceConnectorsListParams": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9-]{8,64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Device Id"
+          }
+        },
+        "title": "DeviceConnectorsListParams",
+        "type": "object"
+      },
+      "DeviceConnectorsResult": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "title": "Device Id",
+            "type": "string"
+          },
+          "connectors": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceConnectorStatus"
+            },
+            "title": "Connectors",
+            "type": "array"
+          }
+        },
+        "required": [
+          "device_id",
+          "connectors"
+        ],
+        "title": "DeviceConnectorsResult",
+        "type": "object"
+      },
+      "DeviceConnectorsSetParams": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/DeviceConnectorId"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeviceConnectorState"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "os_permission": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeviceOsPermission"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "device_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9-]{8,64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Device Id"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "DeviceConnectorsSetParams",
+        "type": "object"
+      },
+      "DeviceOsPermission": {
+        "enum": [
+          "granted",
+          "denied",
+          "not_determined",
+          "unsupported"
+        ],
+        "title": "DeviceOsPermission",
+        "type": "string"
+      },
+      "DeviceToolAction": {
+        "enum": [
+          "calendar.list_events",
+          "calendar.add_event",
+          "reminders.list",
+          "reminders.add",
+          "reminders.complete",
+          "contacts.search",
+          "location.current",
+          "location.search_nearby",
+          "alarms.set",
+          "alarms.list",
+          "timers.start",
+          "home.list_accessories",
+          "home.set"
+        ],
+        "title": "DeviceToolAction",
+        "type": "string"
+      },
+      "DeviceToolCancelPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/DeviceToolCancelReason"
+          }
+        },
+        "required": [
+          "request_id",
+          "reason"
+        ],
+        "title": "DeviceToolCancelPayload",
+        "type": "object"
+      },
+      "DeviceToolCancelReason": {
+        "enum": [
+          "timeout",
+          "interrupted",
+          "disconnected"
+        ],
+        "title": "DeviceToolCancelReason",
+        "type": "string"
+      },
+      "DeviceToolError": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/DeviceToolErrorCode"
+          },
+          "message": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "DeviceToolError",
+        "type": "object"
+      },
+      "DeviceToolErrorCode": {
+        "enum": [
+          "permission_denied",
+          "consent_declined",
+          "unsupported",
+          "invalid_args",
+          "not_found",
+          "failed"
+        ],
+        "title": "DeviceToolErrorCode",
+        "type": "string"
+      },
+      "DeviceToolRequestPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "action": {
+            "$ref": "#/components/schemas/DeviceToolAction"
+          },
+          "connector": {
+            "$ref": "#/components/schemas/DeviceConnectorId"
+          },
+          "args": {
+            "title": "Args"
+          },
+          "needs_consent": {
+            "title": "Needs Consent",
+            "type": "boolean"
+          },
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Session Id"
+          },
+          "deadline_seconds": {
+            "title": "Deadline Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "request_id",
+          "action",
+          "connector",
+          "args",
+          "needs_consent",
+          "profile",
+          "deadline_seconds"
+        ],
+        "title": "DeviceToolRequestPayload",
+        "type": "object"
+      },
+      "DeviceToolRespondParams": {
+        "additionalProperties": false,
+        "properties": {
+          "request_id": {
+            "pattern": "^[A-Za-z0-9-]{8,64}$",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "result": {
+            "default": null,
+            "title": "Result"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeviceToolError"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "request_id",
+          "ok"
+        ],
+        "title": "DeviceToolRespondParams",
+        "type": "object"
+      },
+      "DeviceToolRespondResult": {
+        "additionalProperties": false,
+        "properties": {
+          "recorded": {
+            "title": "Recorded",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "recorded"
+        ],
+        "title": "DeviceToolRespondResult",
         "type": "object"
       },
       "DiagnosticsShareNousParams": {
@@ -50387,6 +50723,60 @@
       }
     },
     {
+      "name": "device.tool.respond",
+      "summary": "Answer a device.tool.request from the connection that received it: ok true carries result (an object shaped for the action), ok false carries error. recorded is false for an unknown, expired, already answered or foreign request.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/DeviceToolRespondParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/DeviceToolRespondResult"
+        }
+      }
+    },
+    {
+      "name": "device_connectors.list",
+      "summary": "The iPhone connectors of one declared device (default: the calling connection's own, set by client.hello). state is the user's choice and defaults to ask; os_permission is what the phone last reported.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/DeviceConnectorsListParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/DeviceConnectorsResult"
+        }
+      }
+    },
+    {
+      "name": "device_connectors.set",
+      "summary": "Persist one connector's state and/or the OS permission the phone observed. At least one of state or os_permission is required; os_permission may only be reported for the calling connection's own device.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/DeviceConnectorsSetParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/DeviceConnectorsResult"
+        }
+      }
+    },
+    {
       "name": "groups.approve",
       "summary": "",
       "params": [
@@ -51454,6 +51844,30 @@
           "name": "payload",
           "schema": {
             "$ref": "#/components/schemas/ChangeSignalPayload"
+          }
+        }
+      ]
+    },
+    {
+      "name": "device.tool.cancel",
+      "summary": "A device.tool.request is no longer wanted; dismiss any prompt for it. A late respond is ignored.",
+      "params": [
+        {
+          "name": "payload",
+          "schema": {
+            "$ref": "#/components/schemas/DeviceToolCancelPayload"
+          }
+        }
+      ]
+    },
+    {
+      "name": "device.tool.request",
+      "summary": "The bot asks this iPhone to run one action on the device (EventKit, HomeKit, Contacts, CoreLocation, AlarmKit). Answer device.tool.respond before deadline_seconds. needs_consent means the connector's state is ask: show a consent prompt first, persist the choice with device_connectors.set, and answer consent_declined if the user refuses.",
+      "params": [
+        {
+          "name": "payload",
+          "schema": {
+            "$ref": "#/components/schemas/DeviceToolRequestPayload"
           }
         }
       ]

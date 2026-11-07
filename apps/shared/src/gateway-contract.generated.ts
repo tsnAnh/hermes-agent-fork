@@ -5601,12 +5601,50 @@ export interface CanonicalBotStopResult {
   stopped: boolean
   handoffs: number
 }
+export interface DeviceConnectorsListParams {
+  device_id?: string | null
+}
+export interface DeviceConnectorsResult {
+  device_id: string
+  connectors: DeviceConnectorStatus[]
+}
+export interface DeviceConnectorStatus {
+  id: DeviceConnectorId
+  title: string
+  subtitle: string
+  state: DeviceConnectorState
+  os_permission: DeviceOsPermission
+}
+export type DeviceConnectorId = 'calendar' | 'home' | 'reminders' | 'contacts' | 'location' | 'alarms'
+export type DeviceConnectorState = 'allowed' | 'ask' | 'off'
+export type DeviceOsPermission = 'granted' | 'denied' | 'not_determined' | 'unsupported'
+export interface DeviceConnectorsSetParams {
+  id: DeviceConnectorId
+  state?: DeviceConnectorState | null
+  os_permission?: DeviceOsPermission | null
+  device_id?: string | null
+}
+export interface DeviceToolRespondParams {
+  request_id: string
+  ok: boolean
+  result?: unknown
+  error?: DeviceToolError | null
+}
+export interface DeviceToolError {
+  code: DeviceToolErrorCode
+  message?: string
+}
+export type DeviceToolErrorCode = 'permission_denied' | 'consent_declined' | 'unsupported' | 'invalid_args' | 'not_found' | 'failed'
+export interface DeviceToolRespondResult {
+  recorded: boolean
+}
 export interface ClientHelloParams {
   kind: 'desktop' | 'ios' | 'tui' | 'cli' | 'web'
   device_id: string
   label: string
   app_version?: string
   accepts_offers?: boolean
+  device_tools?: boolean
   attention?: 'foreground' | 'background' | 'idle'
 }
 export interface ClientHelloResult {
@@ -6320,6 +6358,22 @@ export interface PetHatchProgressPayload {
 }
 /** ``change_watcher._CHANGE_WATCHES`` payload fn — ``{}`` for every watch except pet.changed. */
 export type ChangeSignalPayload = Record<string, unknown>
+export interface DeviceToolRequestPayload {
+  request_id: string
+  action: DeviceToolAction
+  connector: DeviceConnectorId
+  args: unknown
+  needs_consent: boolean
+  profile: string
+  session_id?: string | null
+  deadline_seconds: number
+}
+export type DeviceToolAction = 'calendar.list_events' | 'calendar.add_event' | 'reminders.list' | 'reminders.add' | 'reminders.complete' | 'contacts.search' | 'location.current' | 'location.search_nearby' | 'alarms.set' | 'alarms.list' | 'timers.start' | 'home.list_accessories' | 'home.set'
+export interface DeviceToolCancelPayload {
+  request_id: string
+  reason: DeviceToolCancelReason
+}
+export type DeviceToolCancelReason = 'timeout' | 'interrupted' | 'disconnected'
 export interface ReachOfferPayload {
   offer_id: string
   kind: 'notify' | 'suggest'
@@ -7181,6 +7235,12 @@ export interface CanonicalRpcMethods {
   'cron.status': { params: CronAdmissionParams; result: CronStatusResult }
   /** Admit one cron firing into the owning profile's durable FIFO. */
   'cron.submit': { params: CronRunParams; result: CronSubmitResult }
+  /** Answer a device.tool.request from the connection that received it: ok true carries result (an object shaped for the action), ok false carries error. recorded is false for an unknown, expired, already answered or foreign request. */
+  'device.tool.respond': { params: DeviceToolRespondParams; result: DeviceToolRespondResult }
+  /** The iPhone connectors of one declared device (default: the calling connection's own, set by client.hello). state is the user's choice and defaults to ask; os_permission is what the phone last reported. */
+  'device_connectors.list': { params: DeviceConnectorsListParams; result: DeviceConnectorsResult }
+  /** Persist one connector's state and/or the OS permission the phone observed. At least one of state or os_permission is required; os_permission may only be reported for the calling connection's own device. */
+  'device_connectors.set': { params: DeviceConnectorsSetParams; result: DeviceConnectorsResult }
   'groups.approve': { params: CanonicalRoomApproveParams; result: GroupsApproveResult }
   /** Read one committed attachment for a live room viewer. */
   'groups.attachment.download': { params: GroupsAttachmentDownloadParams; result: RoomAttachmentBytes }
@@ -7259,6 +7319,9 @@ export const CANONICAL_RPC_METHODS = [
   'cron.recover',
   'cron.status',
   'cron.submit',
+  'device.tool.respond',
+  'device_connectors.list',
+  'device_connectors.set',
   'groups.approve',
   'groups.attachment.download',
   'groups.attachment.upload',
@@ -7376,6 +7439,10 @@ export interface BackendGatewayEventMap {
   'connection.update': ConnectionUpdatePayload
   /** cron/jobs.json moved; refetch the cron list. */
   'cron.changed': ChangeSignalPayload
+  /** A device.tool.request is no longer wanted; dismiss any prompt for it. A late respond is ignored. */
+  'device.tool.cancel': DeviceToolCancelPayload
+  /** The bot asks this iPhone to run one action on the device (EventKit, HomeKit, Contacts, CoreLocation, AlarmKit). Answer device.tool.respond before deadline_seconds. needs_consent means the connector's state is ask: show a consent prompt first, persist the choice with device_connectors.set, and answer consent_declined if the user refuses. */
+  'device.tool.request': DeviceToolRequestPayload
   /** The install ended (0 ok, -1 cancelled, -2 no sudo: the command to run by hand was streamed). */
   'display.install.done': DisplayInstallDonePayload
   /** One line of package-manager output. */
@@ -7526,6 +7593,8 @@ export const GATEWAY_EVENT_TYPES = [
   'connection.request',
   'connection.update',
   'cron.changed',
+  'device.tool.cancel',
+  'device.tool.request',
   'display.install.done',
   'display.install.log',
   'display.lease',
