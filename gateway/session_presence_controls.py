@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import asyncio
 from functools import partial
+from pathlib import Path
 
 from pydantic import ValidationError
 
 from gateway.reach_presence import AttentionState, ClientKind, Device, declare, report_attention
 from hermes_state_runtime import RuntimeStoreError
+
+
+def _authority_home(authority) -> Path:
+    return Path(authority.db.db_path).resolve().parent
 
 
 def _same_host(connection) -> bool:
@@ -30,7 +36,15 @@ async def hello(connection, ref, params):
     device = Device(kind=ClientKind(parsed.kind), device_id=parsed.device_id, label=label,
                     app_version=parsed.app_version.strip())
     slot = declare(connection.transport, device, accepts_offers=parsed.accepts_offers,
-                   same_host=_same_host(connection), attention=AttentionState(parsed.attention))
+                   same_host=_same_host(connection), attention=AttentionState(parsed.attention),
+                   device_tools=parsed.device_tools and device.kind is ClientKind.IOS)
+    if slot.device_tools:
+        from gateway import device_connectors
+        try:
+            await asyncio.to_thread(device_connectors.register_device, _authority_home(connection.authority),
+                                    device.device_id, device.label)
+        except device_connectors.StoreUnreadable as exc:
+            raise RuntimeStoreError('storage_unavailable', detail=str(exc)) from exc
     return {'recorded': True, 'same_host': slot.same_host}
 
 

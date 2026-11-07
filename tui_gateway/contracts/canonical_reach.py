@@ -17,6 +17,7 @@ class ClientHelloParams(Params):
     label: str = Field(min_length=1, max_length=40)
     app_version: str = Field(default="", max_length=32)
     accepts_offers: bool = False
+    device_tools: bool = False
     attention: AttentionState = "foreground"
 
 
