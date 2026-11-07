@@ -5606,6 +5606,8 @@ export interface ClientHelloParams {
   device_id: string
   label: string
   app_version?: string
+  model?: string
+  os?: string
   accepts_offers?: boolean
   attention?: 'foreground' | 'background' | 'idle'
 }
@@ -5622,6 +5624,46 @@ export interface RecordedResult {
 export interface ReachOutcomeParams {
   offer_id: string
   outcome: 'shown' | 'acted' | 'dismissed'
+}
+export type DevicesListParams = Record<string, never>
+export interface DevicesListResult {
+  devices: DeviceRow[]
+}
+export interface DeviceRow {
+  device_id: string
+  kind: 'desktop' | 'ios' | 'tui' | 'cli' | 'web'
+  label: string
+  model?: string | null
+  os?: string | null
+  this_device: boolean
+  online: boolean
+  last_seen_at: string
+  push_enabled: boolean
+}
+export interface DevicesForgetParams {
+  device_id: string
+  confirm_self?: boolean
+}
+export interface DevicesForgetResult {
+  forgotten: boolean
+  grants_revoked: number
+  push_removed: boolean
+}
+export interface PushRegisterParams {
+  device_id: string
+  apns_token: string
+  environment: 'sandbox' | 'production'
+  bundle_id: string
+}
+export interface PushRegisterResult {
+  registered: boolean
+  push_enabled: boolean
+}
+export interface PushUnregisterParams {
+  device_id: string
+}
+export interface PushUnregisterResult {
+  removed: boolean
 }
 /** ``answers`` rides only on a reconnect replay (locks the server already accepted; null = skipped). */
 export interface ClarifyRequestParams {
@@ -7181,6 +7223,10 @@ export interface CanonicalRpcMethods {
   'cron.status': { params: CronAdmissionParams; result: CronStatusResult }
   /** Admit one cron firing into the owning profile's durable FIFO. */
   'cron.submit': { params: CronRunParams; result: CronSubmitResult }
+  /** Revoke the device's sign-in grants and push token, drop its row and close its live connections. Forgetting the calling device answers confirm_required unless confirm_self is true. */
+  'devices.forget': { params: DevicesForgetParams; result: DevicesForgetResult }
+  /** Every device the user has connected on this install, newest first. online is live presence; last_seen_at survives restarts; push_enabled needs a registered token and a configured push provider. */
+  'devices.list': { params: DevicesListParams; result: DevicesListResult }
   'groups.approve': { params: CanonicalRoomApproveParams; result: GroupsApproveResult }
   /** Read one committed attachment for a live room viewer. */
   'groups.attachment.download': { params: GroupsAttachmentDownloadParams; result: RoomAttachmentBytes }
@@ -7205,6 +7251,10 @@ export interface CanonicalRpcMethods {
   /** Hand a still-queued admission's text to the running turn's agent as a steer. The admission reads 'started' with that turn (pending snapshots mark it 'steering') and never runs on its own; it settles terminal 'steered' when the turn completes with its text, else 'interrupted' (its completion frame says 'cancelled', as an interrupted turn's does); a text the turn never consumed goes back to its queue place. Refusals: admission_started, session_idle, steer_unavailable (no agent to take it: the admission stays queued), unsupported_control, not_found. */
   'prompt.steer_queued': { params: CanonicalSteerQueuedParams; result: AdmissionStatus }
   'prompt.submit': { params: CanonicalSubmitParams; result: CanonicalSubmitResult }
+  /** Store this device's APNs token. device_id must be the id declared by client.hello on this connection. push_enabled is false while the install has no push credentials. */
+  'push.register': { params: PushRegisterParams; result: PushRegisterResult }
+  /** Remove this device's APNs token; removed is false when none was stored. */
+  'push.unregister': { params: PushUnregisterParams; result: PushUnregisterResult }
   /** Report what the user did with a reach.offer; outcomes only move forward, an unknown offer answers recorded false. */
   'reach.outcome': { params: ReachOutcomeParams; result: RecordedResult }
   /** The classic CLI's /diff session: everything changed since the session's earliest retained checkpoint, as data for its terminal renderer. */
@@ -7259,6 +7309,8 @@ export const CANONICAL_RPC_METHODS = [
   'cron.recover',
   'cron.status',
   'cron.submit',
+  'devices.forget',
+  'devices.list',
   'groups.approve',
   'groups.attachment.download',
   'groups.attachment.upload',
@@ -7274,6 +7326,8 @@ export const CANONICAL_RPC_METHODS = [
   'prompt.resolve_unknown',
   'prompt.steer_queued',
   'prompt.submit',
+  'push.register',
+  'push.unregister',
   'reach.outcome',
   'rollback.session_diff',
   'runtime.describe',

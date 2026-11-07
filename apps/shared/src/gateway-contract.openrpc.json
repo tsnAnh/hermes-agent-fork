@@ -13029,6 +13029,18 @@
             "title": "App Version",
             "type": "string"
           },
+          "model": {
+            "default": "",
+            "maxLength": 40,
+            "title": "Model",
+            "type": "string"
+          },
+          "os": {
+            "default": "",
+            "maxLength": 40,
+            "title": "Os",
+            "type": "string"
+          },
           "accepts_offers": {
             "default": false,
             "title": "Accepts Offers",
@@ -18055,6 +18067,148 @@
           "max_concurrent_children"
         ],
         "title": "DelegationStatusResult",
+        "type": "object"
+      },
+      "DeviceRow": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "title": "Device Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "desktop",
+              "ios",
+              "tui",
+              "cli",
+              "web"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Model"
+          },
+          "os": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Os"
+          },
+          "this_device": {
+            "title": "This Device",
+            "type": "boolean"
+          },
+          "online": {
+            "title": "Online",
+            "type": "boolean"
+          },
+          "last_seen_at": {
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "push_enabled": {
+            "title": "Push Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "device_id",
+          "kind",
+          "label",
+          "this_device",
+          "online",
+          "last_seen_at",
+          "push_enabled"
+        ],
+        "title": "DeviceRow",
+        "type": "object"
+      },
+      "DevicesForgetParams": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "pattern": "^[A-Za-z0-9-]{8,64}$",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "confirm_self": {
+            "default": false,
+            "title": "Confirm Self",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "device_id"
+        ],
+        "title": "DevicesForgetParams",
+        "type": "object"
+      },
+      "DevicesForgetResult": {
+        "additionalProperties": false,
+        "properties": {
+          "forgotten": {
+            "title": "Forgotten",
+            "type": "boolean"
+          },
+          "grants_revoked": {
+            "title": "Grants Revoked",
+            "type": "integer"
+          },
+          "push_removed": {
+            "title": "Push Removed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "forgotten",
+          "grants_revoked",
+          "push_removed"
+        ],
+        "title": "DevicesForgetResult",
+        "type": "object"
+      },
+      "DevicesListParams": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "DevicesListParams",
+        "type": "object"
+      },
+      "DevicesListResult": {
+        "additionalProperties": false,
+        "properties": {
+          "devices": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceRow"
+            },
+            "title": "Devices",
+            "type": "array"
+          }
+        },
+        "required": [
+          "devices"
+        ],
+        "title": "DevicesListResult",
         "type": "object"
       },
       "DiagnosticsShareNousParams": {
@@ -34793,6 +34947,90 @@
         "title": "ProviderUsageWindow",
         "type": "object"
       },
+      "PushRegisterParams": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "pattern": "^[A-Za-z0-9-]{8,64}$",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "apns_token": {
+            "pattern": "^[0-9A-Fa-f]{32,200}$",
+            "title": "Apns Token",
+            "type": "string"
+          },
+          "environment": {
+            "enum": [
+              "sandbox",
+              "production"
+            ],
+            "title": "Environment",
+            "type": "string"
+          },
+          "bundle_id": {
+            "pattern": "^[A-Za-z0-9.-]{3,155}$",
+            "title": "Bundle Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id",
+          "apns_token",
+          "environment",
+          "bundle_id"
+        ],
+        "title": "PushRegisterParams",
+        "type": "object"
+      },
+      "PushRegisterResult": {
+        "additionalProperties": false,
+        "properties": {
+          "registered": {
+            "title": "Registered",
+            "type": "boolean"
+          },
+          "push_enabled": {
+            "title": "Push Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "registered",
+          "push_enabled"
+        ],
+        "title": "PushRegisterResult",
+        "type": "object"
+      },
+      "PushUnregisterParams": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "pattern": "^[A-Za-z0-9-]{8,64}$",
+            "title": "Device Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id"
+        ],
+        "title": "PushUnregisterParams",
+        "type": "object"
+      },
+      "PushUnregisterResult": {
+        "additionalProperties": false,
+        "properties": {
+          "removed": {
+            "title": "Removed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "removed"
+        ],
+        "title": "PushUnregisterResult",
+        "type": "object"
+      },
       "QueuedPrompt": {
         "additionalProperties": false,
         "properties": {
@@ -50387,6 +50625,42 @@
       }
     },
     {
+      "name": "devices.forget",
+      "summary": "Revoke the device's sign-in grants and push token, drop its row and close its live connections. Forgetting the calling device answers confirm_required unless confirm_self is true.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/DevicesForgetParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/DevicesForgetResult"
+        }
+      }
+    },
+    {
+      "name": "devices.list",
+      "summary": "Every device the user has connected on this install, newest first. online is live presence; last_seen_at survives restarts; push_enabled needs a registered token and a configured push provider.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/DevicesListParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/DevicesListResult"
+        }
+      }
+    },
+    {
       "name": "groups.approve",
       "summary": "",
       "params": [
@@ -50653,6 +50927,42 @@
         "name": "result",
         "schema": {
           "$ref": "#/components/schemas/CanonicalSubmitResult"
+        }
+      }
+    },
+    {
+      "name": "push.register",
+      "summary": "Store this device's APNs token. device_id must be the id declared by client.hello on this connection. push_enabled is false while the install has no push credentials.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/PushRegisterParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/PushRegisterResult"
+        }
+      }
+    },
+    {
+      "name": "push.unregister",
+      "summary": "Remove this device's APNs token; removed is false when none was stored.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/PushUnregisterParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/PushUnregisterResult"
         }
       }
     },
