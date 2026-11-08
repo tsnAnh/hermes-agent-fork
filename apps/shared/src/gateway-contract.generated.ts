@@ -7705,6 +7705,8 @@ export interface CanonicalRpcMethods {
   'display.lease.acquire': { params: DisplayLeaseAcquireParams; result: DisplayLeaseResult }
   /** Hand back. Without a viewer id the release is refused while a human holds unless force. */
   'display.lease.release': { params: DisplayLeaseReleaseParams; result: DisplayLeaseResult }
+  /** End the bot's pending hand-back ask (I'm done / Cancel). ask_at limits it to the ask the card showed. */
+  'display.lease.resolve': { params: DisplayLeaseResolveParams; result: DisplayLeaseResult }
   /** Mint a single-use ticket for /api/display/ws and the server-minted viewer id for this connection. */
   'display.observe': { params: DisplayObserveParams; result: DisplayObserveResult }
   /** Stop the screen and wipe its desktop settings and browser data. Refused (5300, code viewer_mismatch) while a human holds unless force; refused for a sandboxed screen. */
@@ -7884,6 +7886,7 @@ export const CANONICAL_RPC_METHODS = [
   'devices.list',
   'display.lease.acquire',
   'display.lease.release',
+  'display.lease.resolve',
   'display.observe',
   'display.reset',
   'display.start',
