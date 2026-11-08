@@ -16,7 +16,7 @@ struct HermesBotsApp: App {
         _model = State(initialValue: model)
         let roster = RosterModel(connection: model)
         _roster = State(initialValue: roster)
-        let router = AppRouter()
+        let router = AppRouter(capabilities: [.botProfile])
         _router = State(initialValue: router)
         _appearance = State(initialValue: AppearanceStore())
         _offers = State(initialValue: ReachOfferModel(presence: model.presence) { sessionID in
@@ -45,22 +45,48 @@ struct RootView: View {
     let model: ConnectionModel
     let roster: RosterModel
     @Bindable var router: AppRouter
+    @State private var bots: BotsKit
+
+    init(model: ConnectionModel, roster: RosterModel, router: AppRouter) {
+        self.model = model
+        self.roster = roster
+        self.router = router
+        _bots = State(initialValue: BotsKit(connection: model))
+    }
 
     var body: some View {
         switch model.phase {
         case .connected:
             NavigationStack(path: $router.path) {
-                RosterView(roster: roster, connection: model) { router.present(.settings) }
+                RosterView(roster: roster, connection: model, router: router) { router.present(.settings) }
                     .navigationDestination(for: AppRoute.self) { route in
                         switch route {
                         case .chat(let name):
                             if let bot = roster.bot(named: name) {
                                 ChatView(model: ChatModel(bot: bot, connection: model, roster: roster))
                             }
+                        case .botProfile(let name):
+                            BotProfileView(
+                                model: BotProfileModel(botName: name, services: bots.services, roster: roster, sharer: bots.sharer),
+                                router: router
+                            )
+                        case .library(let name):
+                            LibraryView(model: LibraryModel(botName: name, services: bots.services))
+                        case .routines(let name):
+                            RoutinesView(model: RoutinesModel(botName: name, services: bots.services))
+                        case .slack(let name):
+                            SlackView(model: SlackModel(
+                                botName: name,
+                                displayName: roster.bot(named: name)?.displayName ?? name,
+                                services: bots.services
+                            ))
                         }
                     }
             }
             .task { await roster.runLive() }
+            .onAppear {
+                router.registerShareAsTemplate { name in Task { await bots.sharer.share(botName: name) } }
+            }
             .sheet(item: $router.sheet) { sheet in
                 switch sheet {
                 case .settings:

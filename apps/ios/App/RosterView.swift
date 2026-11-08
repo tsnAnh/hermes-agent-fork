@@ -5,6 +5,7 @@ import SwiftUI
 struct RosterView: View {
     @Bindable var roster: RosterModel
     let connection: ConnectionModel
+    let router: AppRouter
     let openSettings: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
@@ -18,6 +19,7 @@ struct RosterView: View {
                         HeroView(bot: hero, activity: roster.activity(for: hero.name), mood: roster.avatarMood(for: hero.name))
                     }
                     .buttonStyle(.plain)
+                    .botContextMenu(botName: hero.name, router: router)
                     .accessibilityIdentifier("botRow-\(hero.name)")
                     .accessibilityValue(Text(roster.activity(for: hero.name).accessibilityValue))
                 }
@@ -26,6 +28,7 @@ struct RosterView: View {
                         RosterRowView(bot: bot, activity: roster.activity(for: bot.name), mood: roster.avatarMood(for: bot.name))
                     }
                     .buttonStyle(.plain)
+                    .botContextMenu(botName: bot.name, router: router)
                     .accessibilityIdentifier("botRow-\(bot.name)")
                     .accessibilityValue(Text(roster.activity(for: bot.name).accessibilityValue))
                 }
