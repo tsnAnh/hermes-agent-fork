@@ -17,6 +17,7 @@ struct BotRow: Identifiable, Equatable {
     let lastActive: Date?
     let spec: BotAvatarSpec
     let accent: BotAccent?
+    let usesPrimaryLook: Bool
     let sessionIDs: Set<String>
 
     var id: String { name }
@@ -183,6 +184,7 @@ final class RosterModel {
             lastActive: Date(),
             spec: spec,
             accent: nil,
+            usesPrimaryLook: false,
             sessionIDs: []
         )
         publish()
@@ -234,7 +236,8 @@ final class RosterModel {
         guard pinned != bot.isPinned || primary != bot.isPrimary else { return bot }
         return BotRow(
             name: bot.name, displayName: bot.displayName, isDefault: bot.isDefault, isPrimary: primary, isPinned: pinned,
-            preview: bot.preview, lastActive: bot.lastActive, spec: bot.spec, accent: bot.accent, sessionIDs: bot.sessionIDs
+            preview: bot.preview, lastActive: bot.lastActive, spec: bot.spec, accent: bot.accent,
+            usesPrimaryLook: bot.usesPrimaryLook, sessionIDs: bot.sessionIDs
         )
     }
 
@@ -270,6 +273,7 @@ final class RosterModel {
             lastActive: lastActive,
             spec: BotAvatarSpec(name: profile.name, uiMeta: uiMeta, photo: photos[profile.name]),
             accent: BotAccent(name: profile.name, uiMeta: uiMeta),
+            usesPrimaryLook: profile.name.lowercased() == BotAvatarSpec.primaryName && !BotAvatarMeta(uiMeta: uiMeta).custom,
             sessionIDs: Set([profile.canonical?.id, profile.canonical?.resolvedID].compactMap { $0 })
         )
     }
@@ -288,11 +292,15 @@ final class RosterModel {
     }
 }
 
+enum ClockTime {
+    static func label(for date: Date) -> String {
+        date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits).locale(Locale(identifier: "en_GB")))
+    }
+}
+
 enum RosterTimestamp {
     static func label(for date: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
-        if calendar.isDate(date, inSameDayAs: now) {
-            return date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute().locale(Locale(identifier: "en_GB")))
-        }
+        if calendar.isDate(date, inSameDayAs: now) { return ClockTime.label(for: date) }
         if let yesterday = calendar.date(byAdding: .day, value: -1, to: now), calendar.isDate(date, inSameDayAs: yesterday) {
             return String(localized: "Yesterday")
         }

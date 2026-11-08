@@ -14,15 +14,15 @@ final class SeededRosterE2ETests: E2ETestCase {
     }
 
     func test1RosterShowsTheEightParityBots() throws {
-        let app = launch(resetCredentials: true)
+        let app = launch(resetCredentials: true, extraArguments: ["-hermes-reset-preferences"])
         signInIfNeeded(app)
         for slug in Self.paritySlugs {
             waitFor(app.buttons["botRow-\(slug)"], timeout: 30, "row \(slug)")
         }
         let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "botRow-"))
         XCTAssertGreaterThanOrEqual(rows.count, Self.paritySlugs.count, app.debugDescription)
-        let ua = app.buttons["botRow-cho-ua"]
-        XCTAssertTrue(ua.label.contains("Đã giao làm 12 ảnh"), "seeded preview reaches the roster: \(ua.label)")
+        let untouched = app.buttons["botRow-upwork-hunter"]
+        XCTAssertTrue(untouched.label.contains("Tin cuối vẫn là tin anh gửi"), "seeded preview reaches the roster: \(untouched.label)")
         shot(app, "seeded-roster")
     }
 }

@@ -1,20 +1,36 @@
+import HermesClient
 import HermesRoster
 import Observation
 
 enum AppRoute: Hashable {
     case chat(botName: String)
+    case botProfile(botName: String)
+    case botThread(BotThreadRoute)
+    case library(botName: String)
+    case routines(botName: String)
+    case slack(botName: String)
+    case computer(botName: String)
 }
 
 enum AppSheet: String, Identifiable {
     case settings
     case createBot
+    case connectApps
 
     var id: String { rawValue }
 }
 
-struct AppCapabilities: Equatable {
-    var connectApps = false
-    var searchScopes: [SearchScope] = [.all, .messages, .bots]
+enum AppCapability: Hashable {
+    case botProfile
+    case shareAsTemplate
+    case connectApps
+}
+
+enum BotMenuAction: CaseIterable, Identifiable {
+    case viewProfile
+    case shareAsTemplate
+
+    var id: Self { self }
 }
 
 @MainActor
@@ -23,7 +39,14 @@ final class AppRouter {
     var path: [AppRoute] = []
     var sheet: AppSheet?
     var isSearching = false
-    var capabilities = AppCapabilities()
+    let searchScopes: [SearchScope] = [.all, .messages, .bots]
+    private(set) var capabilities: Set<AppCapability>
+    private(set) var connectAppsProfile: String?
+    @ObservationIgnored private var shareAsTemplateHandler: ((String) -> Void)?
+
+    init(capabilities: Set<AppCapability> = []) {
+        self.capabilities = capabilities
+    }
 
     func push(_ route: AppRoute) {
         path.append(route)
@@ -31,6 +54,11 @@ final class AppRouter {
 
     func present(_ sheet: AppSheet) {
         self.sheet = sheet
+    }
+
+    func presentConnectApps(profile: String? = nil) {
+        connectAppsProfile = profile
+        sheet = .connectApps
     }
 
     func dismissSheet() {
@@ -53,6 +81,38 @@ final class AppRouter {
         isSearching = false
         sheet = nil
         if path.last != .chat(botName: botName) { path = [.chat(botName: botName)] }
+    }
+
+    func supports(_ action: BotMenuAction) -> Bool {
+        switch action {
+        case .viewProfile: capabilities.contains(.botProfile)
+        case .shareAsTemplate: capabilities.contains(.shareAsTemplate)
+        }
+    }
+
+    func registerShareAsTemplate(_ handler: @escaping (String) -> Void) {
+        shareAsTemplateHandler = handler
+        capabilities.insert(.shareAsTemplate)
+    }
+
+    func perform(_ action: BotMenuAction, botName: String) {
+        guard supports(action) else { return }
+        switch action {
+        case .viewProfile: push(.botProfile(botName: botName))
+        case .shareAsTemplate: shareAsTemplateHandler?(botName)
+        }
+    }
+
+    func openChat(from target: PushTarget, in roster: RosterModel) {
+        let name = roster.bot(named: target.profile)?.name
+            ?? target.sessionID.flatMap { roster.botName(forSessionID: $0) }
+            ?? target.profile
+        openChat(botName: name)
+    }
+
+    func dropUnresolvedChat(in roster: RosterModel) {
+        guard roster.isLoaded, case .chat(let name)? = path.last, roster.bot(named: name) == nil else { return }
+        popToRoot()
     }
 
     @discardableResult
