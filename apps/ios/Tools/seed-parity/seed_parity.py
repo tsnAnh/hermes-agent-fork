@@ -38,12 +38,30 @@ class Recency:
 
 
 @dataclass(frozen=True)
+class Routine:
+    title: str
+    prompt: str
+    schedule: str
+
+
+@dataclass(frozen=True)
+class Shared:
+    role: str
+    text: str
+    days_back: int
+    clock: str = "10:15"
+    media: str = ""
+
+
+@dataclass(frozen=True)
 class Bot:
     slug: str
     title: str
     look: Look | None
     last_message: Recency
     conversation: tuple[tuple[str, str], ...]
+    routines: tuple[Routine, ...] = ()
+    shared: tuple[Shared, ...] = ()
 
 
 BOTS = (
@@ -59,6 +77,16 @@ BOTS = (
             ("assistant", "Em đã nhắn chó UA. Bot trả lời là đã giao làm 12 ảnh, ước tính xong trong 20 phút. Anh xem chi tiết ở [bảng creative](https://www.notion.so/creative-ua-t12) nhé."),
             ("user", "Tốt. Chiều nay nhắc anh duyệt ảnh."),
             ("assistant", "Dạ anh, em đã đặt nhắc lúc 15:00. Có gì thay đổi em báo anh ngay."),
+        ),
+        routines=(
+            Routine("Nhắc thanh toán và gia hạn", "Kiểm tra email thanh toán và gia hạn, tóm tắt cái nào sắp hết hạn.", "weekdays at 8:30am"),
+            Routine("Xử lý store review", "Đọc review mới trên App Store và Google Play rồi gợi ý trả lời.", "weekdays at 3pm"),
+        ),
+        shared=(
+            Shared("assistant", "Anh xem trang giá ở https://www.apple.com/app-store/ và tài liệu ở https://developer.apple.com/documentation/swiftui nhé.", 2),
+            Shared("assistant", "Em lưu lại ảnh mô phỏng giao diện ở đây. MEDIA:{media}", 3, "16:40", "library-sample.png"),
+            Shared("assistant", "Bản tin hôm nay: https://news.ycombinator.com/ và https://github.com/trending.", 9),
+            Shared("assistant", "Tài liệu cũ: https://www.python.org/ và https://www.wikipedia.org/ để tham khảo thêm.", 26),
         ),
     ),
     Bot(
@@ -216,20 +244,59 @@ async def create_bot_chat(rpc, bot):
     return created["session_id"]
 
 
+def shared_time(item, now):
+    hour, minute = map(int, item.clock.split(":"))
+    return (now - timedelta(days=item.days_back)).replace(hour=hour, minute=minute, second=0, microsecond=0).timestamp()
+
+
+def write_library_media(profile_dir, name):
+    from PIL import Image, ImageDraw
+
+    target = profile_dir / "cache" / "images" / name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("RGB", (640, 480), (24, 28, 36))
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle((40, 40, 600, 120), radius=18, fill=(52, 120, 246))
+    for row in range(4):
+        top = 160 + row * 70
+        draw.rounded_rectangle((40, top, 600, top + 50), radius=12, fill=(44, 48, 58))
+        draw.ellipse((56, top + 12, 82, top + 38), fill=(245, 138, 6))
+    image.save(target, "PNG")
+    return target
+
+
 def write_transcript(profile_dir, session_id, bot, now):
     from hermes_state import SessionDB
 
     times = message_times(bot, now)
     database = SessionDB(db_path=profile_dir / "state.db")
     try:
+        started = times[0]
+        for item in bot.shared:
+            moment = shared_time(item, now)
+            text = item.text
+            if item.media:
+                text = text.format(media=write_library_media(profile_dir, item.media))
+            database.append_message(session_id, item.role, text, timestamp=moment)
+            started = min(started, moment)
         for (role, text), moment in zip(bot.conversation, times, strict=True):
             database.append_message(session_id, role, text, timestamp=moment)
         database._write_sql(
             "UPDATE sessions SET started_at = ?, last_activity_at = ? WHERE id = ?",
-            (times[0], times[-1], session_id),
+            (started, times[-1], session_id),
         )
     finally:
         database.close()
+
+
+async def create_routines(rpc, bot):
+    for routine in bot.routines:
+        result = await rpc.call("cron.manage", {
+            "action": "add", "profile": bot.slug, "name": routine.title, "prompt": routine.prompt,
+            "schedule": routine.schedule, "deliver": "bot-chat",
+        })
+        if result.get("success") is False:
+            raise SystemExit(f"cron.manage add refused for {bot.slug}: {json.dumps(result)}")
 
 
 async def seed_through_gateway(home, now):
@@ -247,6 +314,7 @@ async def seed_through_gateway(home, now):
             await configure_bot(rpc, bot)
             session_id = await create_bot_chat(rpc, bot)
             write_transcript(profile_directory(home, bot), session_id, bot, now)
+            await create_routines(rpc, bot)
         pump.cancel()
 
 
