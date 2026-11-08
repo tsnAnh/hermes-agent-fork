@@ -6,6 +6,7 @@ enum AppRoute: Hashable {
 
 enum AppSheet: String, Identifiable {
     case settings
+    case connectApps
 
     var id: String { rawValue }
 }
@@ -15,6 +16,7 @@ enum AppSheet: String, Identifiable {
 final class AppRouter {
     var path: [AppRoute] = []
     var sheet: AppSheet?
+    private(set) var connectAppsProfile: String?
 
     func push(_ route: AppRoute) {
         path.append(route)
@@ -22,6 +24,11 @@ final class AppRouter {
 
     func present(_ sheet: AppSheet) {
         self.sheet = sheet
+    }
+
+    func presentConnectApps(profile: String? = nil) {
+        connectAppsProfile = profile
+        sheet = .connectApps
     }
 
     func dismissSheet() {
