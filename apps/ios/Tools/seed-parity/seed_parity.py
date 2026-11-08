@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import uuid
+from collections import namedtuple
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -50,6 +51,22 @@ def as_turn(entry):
 
 
 @dataclass(frozen=True)
+class Routine:
+    title: str
+    prompt: str
+    schedule: str
+
+
+@dataclass(frozen=True)
+class Shared:
+    role: str
+    text: str
+    days_back: int
+    clock: str = "10:15"
+    media: str = ""
+
+
+@dataclass(frozen=True)
 class Bot:
     slug: str
     title: str
@@ -57,6 +74,8 @@ class Bot:
     last_message: Recency
     conversation: tuple
     pinned: bool = False
+    routines: tuple[Routine, ...] = ()
+    shared: tuple[Shared, ...] = ()
 
 
 BOTS = (
@@ -81,6 +100,16 @@ BOTS = (
             Turn("assistant", "Ok anh, vậy cứ để LastPass hết hạn. Em ghi nhớ anh dùng 1Password rồi, lần sau không nhắc LastPass nữa.", gap_before=timedelta(minutes=1)),
             Turn("user", "ý là đợi hết lastpass t sẽ qua 1password", gap_before=timedelta(hours=9)),
             Turn("assistant", "À hiểu rồi anh, dùng LastPass tới khi hết hạn ngày 6/12 rồi mới chuyển qua 1Password. Em sửa lại ghi nhớ rồi, lần sau cũng không nhắc gia hạn LastPass nữa.", gap_before=timedelta(minutes=1)),
+        ),
+        routines=(
+            Routine("Nhắc thanh toán và gia hạn", "Kiểm tra email thanh toán và gia hạn, tóm tắt cái nào sắp hết hạn.", "weekdays at 8:30am"),
+            Routine("Xử lý store review", "Đọc review mới trên App Store và Google Play rồi gợi ý trả lời.", "weekdays at 3pm"),
+        ),
+        shared=(
+            Shared("assistant", "Anh xem trang giá ở https://www.apple.com/app-store/ và tài liệu ở https://developer.apple.com/documentation/swiftui nhé.", 2),
+            Shared("assistant", "Em lưu lại ảnh mô phỏng giao diện ở đây. MEDIA:{media}", 3, "16:40", "library-sample.png"),
+            Shared("assistant", "Bản tin hôm nay: https://news.ycombinator.com/ và https://github.com/trending.", 9),
+            Shared("assistant", "Tài liệu cũ: https://www.python.org/ và https://www.wikipedia.org/ để tham khảo thêm.", 26),
         ),
     ),
     Bot(
@@ -238,6 +267,22 @@ EXCHANGES = (
 
 DM_WAIT_SECONDS = 120
 
+ProviderAccount = namedtuple("ProviderAccount", "provider label auth_type base_path spend")
+
+PROVIDER_ACCOUNTS = (
+    ProviderAccount("openai-codex", "Personal", "oauth", "/backend-api/codex", None),
+    ProviderAccount("copilot", "Personal", "oauth", "", None),
+    ProviderAccount("openai-api", "Default key", "api_key", "", (182_400, 56_300, 4.27)),
+)
+SPEND_SOURCE = "api_server"
+
+OtherDevice = namedtuple("OtherDevice", "device_id label days_ago")
+
+OTHER_DEVICES = (
+    OtherDevice("e2e-desktop-0001", "Bens-MacBook-Pro.local", 9),
+    OtherDevice("e2e-desktop-0002", "tsnanh", 56),
+)
+
 
 def slugs():
     return [bot.slug for bot in BOTS]
@@ -291,18 +336,47 @@ async def create_bot_chat(rpc, bot):
     return created["session_id"]
 
 
+def shared_time(item, now):
+    hour, minute = map(int, item.clock.split(":"))
+    return (now - timedelta(days=item.days_back)).replace(hour=hour, minute=minute, second=0, microsecond=0).timestamp()
+
+
+def write_library_media(profile_dir, name):
+    from PIL import Image, ImageDraw
+
+    target = profile_dir / "cache" / "images" / name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("RGB", (640, 480), (24, 28, 36))
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle((40, 40, 600, 120), radius=18, fill=(52, 120, 246))
+    for row in range(4):
+        top = 160 + row * 70
+        draw.rounded_rectangle((40, top, 600, top + 50), radius=12, fill=(44, 48, 58))
+        draw.ellipse((56, top + 12, 82, top + 38), fill=(245, 138, 6))
+    image.save(target, "PNG")
+    return target
+
+
 def write_transcript(profile_dir, session_id, bot, now):
     from hermes_state import SessionDB
 
     times = message_times(bot, now)
     database = SessionDB(db_path=profile_dir / "state.db")
     try:
+        started = times[0]
+        for item in bot.shared:
+            moment = shared_time(item, now)
+            text = item.text
+            if item.media:
+                text = text.format(media=write_library_media(profile_dir, item.media))
+            database.append_message(session_id, item.role, text, timestamp=moment)
+            started = min(started, moment)
         for entry, moment in zip(bot.conversation, times, strict=True):
             turn = as_turn(entry)
             database.append_message(session_id, turn.role, turn.text, timestamp=moment, display_kind=turn.display_kind)
         database._write_sql(
             "UPDATE sessions SET started_at = ?, last_activity_at = ? WHERE id = ?",
-            (times[0], times[-1], session_id),
+            (started, times[-1], session_id),
         )
     finally:
         database.close()
@@ -335,6 +409,16 @@ async def run_exchange(rpc, session_ids, exchange):
         await asyncio.sleep(0.5)
 
 
+async def create_routines(rpc, bot):
+    for routine in bot.routines:
+        result = await rpc.call("cron.manage", {
+            "action": "add", "profile": bot.slug, "name": routine.title, "prompt": routine.prompt,
+            "schedule": routine.schedule, "deliver": "bot-chat",
+        })
+        if result.get("success") is False:
+            raise SystemExit(f"cron.manage add refused for {bot.slug}: {json.dumps(result)}")
+
+
 async def seed_through_gateway(home, now):
     client = load_gateway_client()
     environment = os.environ
@@ -351,9 +435,51 @@ async def seed_through_gateway(home, now):
             await configure_bot(rpc, bot)
             session_ids[bot.slug] = await create_bot_chat(rpc, bot)
             write_transcript(profile_directory(home, bot), session_ids[bot.slug], bot, now)
+            await create_routines(rpc, bot)
         for exchange in EXCHANGES:
             await run_exchange(rpc, session_ids, exchange)
         pump.cancel()
+
+
+def provider_root(stub_url):
+    return stub_url.rstrip("/").removesuffix("/v1")
+
+
+def seed_provider_accounts(home, stub_url):
+    from hermes_cli.auth import write_credential_pool
+    from hermes_state import SessionDB
+
+    root = provider_root(stub_url)
+    for account in PROVIDER_ACCOUNTS:
+        entry = {
+            "id": f"e2e-{account.provider}", "label": account.label, "auth_type": account.auth_type, "priority": 0,
+            "source": "manual", "access_token": f"e2e-fake-{account.provider}-credential",
+        }
+        if account.base_path:
+            entry["base_url"] = root + account.base_path
+        write_credential_pool(account.provider, [entry])
+    database = SessionDB(db_path=home / "state.db")
+    try:
+        for account in PROVIDER_ACCOUNTS:
+            if account.spend is None:
+                continue
+            input_tokens, output_tokens, usd = account.spend
+            database.update_token_counts(
+                f"e2e-spend-{account.provider}", input_tokens=input_tokens, output_tokens=output_tokens,
+                model="e2e-model", actual_cost_usd=usd, cost_status="actual", cost_source="provider_response",
+                billing_provider=account.provider, billing_mode="api", api_call_count=12, source=SPEND_SOURCE)
+    finally:
+        database.close()
+
+
+def seed_other_devices(home, now):
+    from gateway import device_registry
+
+    root = device_registry.install_root(home)
+    for device in OTHER_DEVICES:
+        device_registry.record_hello(
+            root, device_id=device.device_id, kind="desktop", label=device.label, model="Mac", os_name="macOS",
+            app_version="1.0", now=(now - timedelta(days=device.days_ago)).timestamp())
 
 
 def require_sandbox_home(home):
@@ -374,7 +500,10 @@ def seed(home, repo, dm_replies):
     os.environ["HERMES_HOME"] = str(home)
     write_dm_replies(dm_replies)
     sys.path.insert(0, str(repo))
-    asyncio.run(seed_through_gateway(home, datetime.now().astimezone()))
+    now = datetime.now().astimezone()
+    asyncio.run(seed_through_gateway(home, now))
+    seed_provider_accounts(home, os.environ["HERMES_IOS_E2E_STUB_URL"])
+    seed_other_devices(home, now)
     print(",".join(slugs()))
 
 

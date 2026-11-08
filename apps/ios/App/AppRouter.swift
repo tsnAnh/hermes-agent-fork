@@ -1,3 +1,4 @@
+import HermesClient
 import HermesRoster
 import Observation
 
@@ -5,11 +6,16 @@ enum AppRoute: Hashable {
     case chat(botName: String)
     case botProfile(botName: String)
     case botThread(BotThreadRoute)
+    case library(botName: String)
+    case routines(botName: String)
+    case slack(botName: String)
+    case computer(botName: String)
 }
 
 enum AppSheet: String, Identifiable {
     case settings
     case createBot
+    case connectApps
 
     var id: String { rawValue }
 }
@@ -22,7 +28,6 @@ enum AppCapability: Hashable {
 
 enum BotMenuAction: CaseIterable, Identifiable {
     case viewProfile
-    case findInChat
     case shareAsTemplate
 
     var id: Self { self }
@@ -36,6 +41,7 @@ final class AppRouter {
     var isSearching = false
     let searchScopes: [SearchScope] = [.all, .messages, .bots]
     private(set) var capabilities: Set<AppCapability>
+    private(set) var connectAppsProfile: String?
     @ObservationIgnored private var shareAsTemplateHandler: ((String) -> Void)?
 
     init(capabilities: Set<AppCapability> = []) {
@@ -48,6 +54,11 @@ final class AppRouter {
 
     func present(_ sheet: AppSheet) {
         self.sheet = sheet
+    }
+
+    func presentConnectApps(profile: String? = nil) {
+        connectAppsProfile = profile
+        sheet = .connectApps
     }
 
     func dismissSheet() {
@@ -74,7 +85,6 @@ final class AppRouter {
 
     func supports(_ action: BotMenuAction) -> Bool {
         switch action {
-        case .findInChat: true
         case .viewProfile: capabilities.contains(.botProfile)
         case .shareAsTemplate: capabilities.contains(.shareAsTemplate)
         }
@@ -90,8 +100,19 @@ final class AppRouter {
         switch action {
         case .viewProfile: push(.botProfile(botName: botName))
         case .shareAsTemplate: shareAsTemplateHandler?(botName)
-        case .findInChat: break
         }
+    }
+
+    func openChat(from target: PushTarget, in roster: RosterModel) {
+        let name = roster.bot(named: target.profile)?.name
+            ?? target.sessionID.flatMap { roster.botName(forSessionID: $0) }
+            ?? target.profile
+        openChat(botName: name)
+    }
+
+    func dropUnresolvedChat(in roster: RosterModel) {
+        guard roster.isLoaded, case .chat(let name)? = path.last, roster.bot(named: name) == nil else { return }
+        popToRoot()
     }
 
     @discardableResult

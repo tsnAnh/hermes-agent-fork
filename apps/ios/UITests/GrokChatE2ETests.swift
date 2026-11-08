@@ -10,7 +10,7 @@ final class GrokChatE2ETests: E2ETestCase {
     }
 
     private func openChat(_ slug: String, extra: [String] = []) -> XCUIApplication {
-        let app = launch(extraArguments: ["-\(AppearanceStore.defaultsKey)", AppearanceMode.dark.rawValue] + extra)
+        let app = launch(extraArguments: ["-hermes-reset-preferences", "-\(AppearanceStore.defaultsKey)", AppearanceMode.dark.rawValue] + extra)
         signInIfNeeded(app)
         openBot(app, slug)
         return app
@@ -38,8 +38,8 @@ final class GrokChatE2ETests: E2ETestCase {
         let app = openChat("cho-ua")
         app.buttons["chatMenuButton"].tap()
         waitFor(app.buttons["chatMenuFind"], timeout: 10, "overflow menu")
-        XCTAssertFalse(app.buttons["chatMenuViewProfile"].exists, "View Profile stays hidden until its route exists")
-        XCTAssertFalse(app.buttons["chatMenuShareTemplate"].exists, "Share as Template stays hidden until its hook exists")
+        XCTAssertTrue(app.buttons["chatMenuViewProfile"].exists, "View Profile opens the bot profile route")
+        XCTAssertTrue(app.buttons["chatMenuShareTemplate"].exists, "Share as Template uses the registered template sharer")
         app.buttons["chatMenuFind"].tap()
 
         let field = app.textFields["findField"]
