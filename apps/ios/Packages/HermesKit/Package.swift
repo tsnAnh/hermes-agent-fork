@@ -13,6 +13,8 @@ let package = Package(
         .library(name: "HermesClient", targets: ["HermesClient"]),
         .library(name: "HermesChat", targets: ["HermesChat"]),
         .library(name: "HermesRoster", targets: ["HermesRoster"]),
+        .library(name: "HermesDevice", targets: ["HermesDevice"]),
+        .library(name: "HermesConnect", targets: ["HermesConnect"]),
     ],
     targets: [
         .target(name: "HermesProtocol", dependencies: ["HermesDiagnostics"]),
@@ -31,11 +33,16 @@ let package = Package(
             ]
         ),
         .target(name: "HermesRoster", dependencies: ["HermesProtocol", "HermesDiagnostics", "HermesTransport"]),
+        .target(name: "HermesDevice", dependencies: ["HermesProtocol", "HermesDiagnostics", "HermesTransport"]),
+        .target(
+            name: "HermesConnect",
+            dependencies: ["HermesProtocol", "HermesDiagnostics", "HermesTransport", "HermesAuth"]
+        ),
         .testTarget(
             name: "HermesKitTests",
             dependencies: [
                 "HermesProtocol", "HermesDiagnostics", "HermesREST", "HermesAuth", "HermesTransport", "HermesClient",
-                "HermesChat", "HermesRoster",
+                "HermesChat", "HermesRoster", "HermesDevice", "HermesConnect",
             ]
         ),
     ],

@@ -36,27 +36,29 @@ public actor ReachPresence {
 
     public var canPresentOffers: Bool { attention == .foreground }
 
-    public func declare(on connection: GatewayConnection, acceptsOffers: Bool) async {
+    @discardableResult
+    public func declare(on connection: GatewayConnection, acceptsOffers: Bool, deviceTools: Bool = false) async -> Bool {
         let declared = attention
         do {
             let result = try await connection.call(
                 "client.hello",
-                params: ReachWire.helloParams(identity: identity, acceptsOffers: acceptsOffers, attention: declared),
+                params: ReachWire.helloParams(identity: identity, acceptsOffers: acceptsOffers, attention: declared, deviceTools: deviceTools),
                 timeout: Self.callTimeout
             )
             guard result["recorded"]?.boolValue == true else {
                 diagnostics.info("reach", "client.hello was not recorded")
-                return
+                return false
             }
         } catch is CancellationError {
-            return
+            return false
         } catch {
             diagnostics.info("reach", "client.hello refused: \(Diagnostics.describe(error))")
-            return
+            return false
         }
         routes.removeAll { $0.connection == nil || $0.connection === connection }
         routes.append(Route(connection: connection, acceptsOffers: acceptsOffers, delivered: declared))
         await flush()
+        return true
     }
 
     public func setAttention(_ next: ReachAttention) async {
