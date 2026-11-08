@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import uuid
+from collections import namedtuple
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -38,19 +39,51 @@ class Recency:
 
 
 @dataclass(frozen=True)
+class Turn:
+    role: str
+    text: str
+    gap_before: timedelta | None = None
+    display_kind: str | None = None
+
+
+def as_turn(entry):
+    return entry if isinstance(entry, Turn) else Turn(role=entry[0], text=entry[1])
+
+
+@dataclass(frozen=True)
+class Routine:
+    title: str
+    prompt: str
+    schedule: str
+
+
+@dataclass(frozen=True)
+class Shared:
+    role: str
+    text: str
+    days_back: int
+    clock: str = "10:15"
+    media: str = ""
+
+
+@dataclass(frozen=True)
 class Bot:
     slug: str
     title: str
     look: Look | None
     last_message: Recency
-    conversation: tuple[tuple[str, str], ...]
+    conversation: tuple
+    pinned: bool = False
+    routines: tuple[Routine, ...] = ()
+    shared: tuple[Shared, ...] = ()
 
 
 BOTS = (
     Bot(
         slug="default",
         title="chó grok bot",
-        look=None,
+        look=Look(shape="blobatar:grok:round", color="#ffffff"),
+        pinned=True,
         last_message=Recency(minutes_ago=45),
         conversation=(
             ("user", "Chào em, hôm nay anh cần em gom lại việc của cả đội bot giúp anh."),
@@ -59,28 +92,51 @@ BOTS = (
             ("assistant", "Em đã nhắn chó UA. Bot trả lời là đã giao làm 12 ảnh, ước tính xong trong 20 phút. Anh xem chi tiết ở [bảng creative](https://www.notion.so/creative-ua-t12) nhé."),
             ("user", "Tốt. Chiều nay nhắc anh duyệt ảnh."),
             ("assistant", "Dạ anh, em đã đặt nhắc lúc 15:00. Có gì thay đổi em báo anh ngay."),
+            Turn("user", "Fren fix rồi", gap_before=timedelta(hours=14)),
+            Turn("assistant", "Ok anh. Fren đã fix rồi thì còn lại Kirumi với thẻ Google Cloud của ScribeFoundry thôi nha.", gap_before=timedelta(minutes=1)),
+            Turn("assistant", "Anh ơi, sáng nay (khoảng 8:03, giờ VN) Google Payments gửi mail \"Add Brazil tax info\", yêu cầu anh bổ sung thông tin thuế Brazil vì app trên Play đã có thu nhập ở đó. Anh khai ở [Google Payments](https://pay.google.com/) nha. Thẻ GCP với vụ thanh toán bị giữ thì vẫn như em báo hôm trước.", gap_before=timedelta(hours=15)),
+            Turn("assistant", "Anh ơi, LastPass Premium của anh không bật tự gia hạn nên sẽ hết hạn ngày 6/12/2026. Nếu còn dùng thì anh vào [LastPass](https://www.lastpass.com/) gia hạn hoặc bật auto-renew nha.", gap_before=timedelta(minutes=23)),
+            Turn("user", "éo, tau dùng 1password", gap_before=timedelta(minutes=8)),
+            Turn("assistant", "Ok anh, vậy cứ để LastPass hết hạn. Em ghi nhớ anh dùng 1Password rồi, lần sau không nhắc LastPass nữa.", gap_before=timedelta(minutes=1)),
+            Turn("user", "ý là đợi hết lastpass t sẽ qua 1password", gap_before=timedelta(hours=9)),
+            Turn("assistant", "À hiểu rồi anh, dùng LastPass tới khi hết hạn ngày 6/12 rồi mới chuyển qua 1Password. Em sửa lại ghi nhớ rồi, lần sau cũng không nhắc gia hạn LastPass nữa.", gap_before=timedelta(minutes=1)),
+        ),
+        routines=(
+            Routine("Nhắc thanh toán và gia hạn", "Kiểm tra email thanh toán và gia hạn, tóm tắt cái nào sắp hết hạn.", "weekdays at 8:30am"),
+            Routine("Xử lý store review", "Đọc review mới trên App Store và Google Play rồi gợi ý trả lời.", "weekdays at 3pm"),
+        ),
+        shared=(
+            Shared("assistant", "Anh xem trang giá ở https://www.apple.com/app-store/ và tài liệu ở https://developer.apple.com/documentation/swiftui nhé.", 2),
+            Shared("assistant", "Em lưu lại ảnh mô phỏng giao diện ở đây. MEDIA:{media}", 3, "16:40", "library-sample.png"),
+            Shared("assistant", "Bản tin hôm nay: https://news.ycombinator.com/ và https://github.com/trending.", 9),
+            Shared("assistant", "Tài liệu cũ: https://www.python.org/ và https://www.wikipedia.org/ để tham khảo thêm.", 26),
         ),
     ),
     Bot(
         slug="cho-ua",
         title="chó UA",
-        look=Look(shape="blobatar:ua:organic", color="#d6264a"),
+        look=Look(shape="blobatar:ua:organic", color="#ed0a37"),
         last_message=Recency(minutes_ago=12),
         conversation=(
-            ("user", "Em ơi, anh cần ảnh banner cho chiến dịch UA tháng 12, test creative cho app học tiếng Anh. Làm được mấy bộ?"),
-            ("assistant", "Dạ anh. Em đề xuất 3 hướng creative để test song song:\n\n- **Bộ A**: pastel sáng, mascot cười\n- **Bộ B**: chủ đề Giáng sinh, tông đỏ xanh\n- **Bộ C**: tối giản, chữ lớn, nền trơn\n\nMỗi bộ 4 ảnh, size 1080x1350 cho Meta và 1200x628 cho Google. Anh duyệt hướng trước nhé?"),
-            ("user", "OK, làm cả 3 bộ. Nhớ để lại khoảng trống phía dưới cho CTA."),
-            ("assistant", "Em ghi nhận: chừa 18% đáy ảnh cho CTA. Em đã gửi yêu cầu sang bot chó ai image gen, anh xem tiến độ ở [bảng creative](https://www.notion.so/creative-ua-t12) nhé."),
-            ("user", "Có benchmark CPI của mấy app tương tự không?"),
-            ("assistant", "Có anh. Theo [AppMagic](https://appmagic.rocks/) và dữ liệu em tổng hợp được:\n\n- CPI iOS Việt Nam: khoảng $0.8 đến $1.2\n- CPI Android Việt Nam: khoảng $0.3 đến $0.5\n- Creative tối giản thường có CTR cao hơn 15 đến 20%\n\nEm sẽ dùng số này làm mốc cắt creative sau 3 ngày chạy."),
-            ("user", "Giao làm luôn đi, xong báo anh."),
-            ("assistant", "Đã giao làm 12 ảnh: bộ A pastel sáng, bộ B Giáng sinh, bộ C tối giản. Mỗi bộ 4 ảnh, đúng size Meta và Google, chừa sẵn vùng CTA. Em báo anh ngay khi bot gen ảnh trả file."),
+            Turn("user", "Em ơi, anh cần 4 ảnh App Store cho app Fren, bán ý tưởng chính là wallpaper và chibi trên home screen. Lên brief giúp anh."),
+            Turn("assistant", "Dạ anh. Nội dung 4 ảnh:\n\n1. **\u201cYour wallpaper has a roommate\u201d** \u2014 Giới thiệu ngay wallpaper có người sống bên trong. Một màn home nổi bật, thấy rõ căn phòng và nhân vật. Đây là ảnh bán ý tưởng chính.\n2. **\u201cHer little moments, on your screen\u201d** \u2014 Đưa người xem gần hơn với Fren đang trang trí cây. Dùng cảnh và chi tiết chuyển động làm trọng tâm, không lặp layout home của ảnh 1. Không thêm hành động app chưa có.\n3. **\u201cThree rooms. One cozy Christmas.\u201d** \u2014 Cho thấy ba không gian bedroom, workshop, igloo bằng bố cục có chiều sâu, một cảnh chính và hai cảnh phụ. Không biến thành catalog cửa hàng hay bảng nút mua.\n4. **\u201cMeet your tiny home-screen companion\u201d** \u2014 Tập trung vào chibi Fren giữa các icon và tương tác home đã có. Phân biệt rõ với Fren trong wallpaper ở ảnh 1; không dùng cô gái minh họa lớn để thay cho tính năng.\n\n**Không làm:** khoanh đỏ, dây nối, kính lúp, collage screenshot có chữ li ti, clipart dán bốn góc, UI giả có tính năng không tồn tại, claim miễn phí hoặc trial.\n\n**Bàn giao:** 4 ảnh 1080\u00d71920 và một bảng xem cả bộ. Trước khi gửi, so trực tiếp với reference về độ rõ, bố cục và tính nhất quán; ghi rõ phần nào là mockup để kiểm tính chính xác."),
+            Turn("user", "cái 3, ko cần list 3 rooms làm gì cho mệt", gap_before=timedelta(minutes=25)),
+            Turn("assistant", "Ừ anh, #3 chỉ cần một cảnh igloo thật đẹp với headline **\u201cFind your cozy corner\u201d**. Bỏ danh sách, thumbnail và tên ba phòng; bán cảm giác có một góc riêng, không liệt kê tính năng.", gap_before=timedelta(minutes=1)),
+            Turn("user", "thees sau tao theem vaof thif sao", gap_before=timedelta(minutes=1)),
+            Turn("assistant", "Đúng anh, ghi \u201c3 rooms\u201d thì thêm phòng lại phải sửa ảnh. Brief #3 đổi thành **\u201cFind your cozy corner\u201d**, minh họa một phòng thôi, không chốt số lượng hay liệt kê tên phòng.", gap_before=timedelta(minutes=1)),
+            Turn("user", "Maf sao cos 4 cai screenshot thoi?", gap_before=timedelta(minutes=1)),
+            Turn("assistant", "Vì em tự rút từ 8 xuống 4 để bỏ nội dung lặp, nhưng lại thu hẹp bộ quá mức. Không phải giới hạn của store. Em sẽ lên lại mạch 8 ảnh với 8 ý riêng, không kéo dài bằng cách liệt kê từng phòng hay lặp màn hình home.", gap_before=timedelta(minutes=1)),
+            Turn("user", "6 casi ddi, lam 2 bo experiment", gap_before=timedelta(minutes=1)),
+            Turn("assistant", "Chốt anh: 2 bộ, mỗi bộ 6 ảnh. Em giữ cùng nội dung và thứ tự, chỉ đổi hướng thiết kế giữa hai bộ để test rõ; không ghi số lượng phòng. Làm xong em gửi cả hai bộ duyệt, chưa chạy experiment.", gap_before=timedelta(minutes=1)),
+            Turn("user", "Message from \U0001f916 chó ai image gen (@cho-ai-image-gen): Đã nhận brief 2 bộ, mỗi bộ 6 ảnh. Em bắt đầu gen ngay, bản nháp đầu sẽ có sau ít phút.", gap_before=timedelta(hours=6), display_kind="internal_notification"),
+            Turn("user", "[IMPORTANT: Background process proc_7f3a matched watch pattern \"batch complete\".\nCommand: gen_images.sh --sets 2\nMatched output:\nbatch complete: 12 files]", gap_before=timedelta(minutes=3), display_kind="internal_notification"),
+            Turn("assistant", "Đã giao làm 12 ảnh: bộ A pastel sáng, bộ B Giáng sinh tông đậm. Cùng thông điệp để so thiết kế, không trộn thêm thay đổi nội dung giữa hai bộ. Chi tiết xem [bảng creative](https://www.notion.so/creative-ua-t12).", gap_before=timedelta(minutes=1)),
         ),
     ),
     Bot(
         slug="cho-ai-image-gen",
         title="chó ai image gen",
-        look=Look(shape="blobatar:ai-image-gen:boxy", color="#ef4444"),
+        look=Look(shape="blobatar:ai-image-gen:round", color="#ed0a37"),
         last_message=Recency(days_back=1, clock="22:48"),
         conversation=(
             ("user", "Gen cho anh logo mascot con chó cầm điện thoại, style flat, nền trong."),
@@ -88,13 +144,13 @@ BOTS = (
             ("user", "Số 2, đổi tông sang xanh mint."),
             ("assistant", "Xong rồi anh, bản mint đây. Em lưu PNG 2048px và SVG trong thư mục chung của đội."),
             ("user", "Em xem tin nhắn từ chó UA đi, có brief mới."),
-            ("assistant", "Message from chó UA: Anh CHỐT mới: 6 ảnh mỗi bộ, bỏ bộ C tối giản, giữ bộ A và B. Em sẽ gen lại theo brief này, ước tính 20 phút. Chi tiết xem [brief mới](https://www.notion.so/creative-ua-t12)."),
+            ("user", "Message from 🤖 chó UA (@cho-ua): Anh CHỐT mới: 6 ảnh mỗi bộ, bỏ bộ C tối giản, giữ bộ A và B. Em sẽ gen lại theo brief này, ước tính 20 phút. Chi tiết xem [brief mới](https://www.notion.so/creative-ua-t12)."),
         ),
     ),
     Bot(
         slug="upwork-hunter",
         title="Upwork Hunter",
-        look=Look(shape="blobatar:upwork:round", color="#22c55e"),
+        look=Look(shape="blobatar:upwork:capsule", color="#10dc69"),
         last_message=Recency(days_back=1, clock="18:20"),
         conversation=(
             ("user", "Quét Upwork giúp anh job React Native, budget từ $2000, đăng trong 24 giờ qua."),
@@ -110,7 +166,7 @@ BOTS = (
     Bot(
         slug="cho-research-app",
         title="chó research app",
-        look=Look(shape="hexagon", color="#ff2d95"),
+        look=Look(shape="blobatar:research:hexagon", color="#ee0d8f"),
         last_message=Recency(days_back=2, clock="16:05"),
         conversation=(
             ("user", "Nghiên cứu giúp anh các app journaling đang top ở App Store Việt Nam."),
@@ -126,7 +182,7 @@ BOTS = (
     Bot(
         slug="cho-hong-hot",
         title="chó hóng hớt",
-        look=Look(shape="blobatar:hong-hot:cloud", color="#f97316"),
+        look=Look(shape="blobatar:hong-hot:organic", color="#f15105"),
         last_message=Recency(days_back=2, clock="08:12"),
         conversation=(
             ("user", "Mỗi sáng 8 giờ gửi anh bản tin AI, tối đa 5 ý, có link nguồn."),
@@ -140,7 +196,7 @@ BOTS = (
     Bot(
         slug="market-researcher",
         title="Market Researcher",
-        look=Look(shape="blobatar:market:droplet", color="#9333ea"),
+        look=Look(shape="blobatar:market:hexagon", color="#833cf8"),
         last_message=Recency(days_back=3, clock="11:40"),
         conversation=(
             ("user", "Chốt cho anh định vị Soully, đừng lan man."),
@@ -154,7 +210,7 @@ BOTS = (
     Bot(
         slug="cho-dinh",
         title="chó Định",
-        look=Look(shape="blobatar:dinh:capsule", color="#14b8a6"),
+        look=Look(shape="blobatar:dinh:triangle", color="#0ec79b"),
         last_message=Recency(days_back=4, clock="09:25"),
         conversation=(
             ("user", "Định ơi, gộp việc check crash Crashlytics vào routine sáng của em."),
@@ -168,14 +224,76 @@ BOTS = (
 )
 
 
+@dataclass(frozen=True)
+class Exchange:
+    sender: str
+    target: str
+    body: str
+    reply: str
+
+
+EXCHANGES = (
+    Exchange(
+        sender="cho-research-app",
+        target="market-researcher",
+        body="Final verification for Soully. Plan: /workspace/radar/soully-43b-plan.md (journal-first, cards as optional prompts, pair + receipts). Please:\n\n1. Verify the cited precedents exist and how they're framed (Specula, Hermit's Way, Shadow Work, Arcana).\n2. Check journal-first still lands in a proven payer lane (Stoic, Day One, Reflectly, Rosebud).\n3. Re-score this final version out of 10 with remaining gaps.\n\nWrite /workspace/radar/mr-soully-final.md and message me.",
+        reply="Soully final (journal-first): **7.1/10** under the paid-ads-OK bar, a little below Pair's independent 7.3. It's safer at App Review but lands in a thinner lane for revenue.\n\n- Precedents verified: Specula, Hermit's Way and Shadow Work all exist and frame cards as optional prompts\n- Payer lane: Stoic, Day One and Reflectly confirm journal-first still monetises\n- Gaps keeping it below 8:\n  1. Pair mechanic is unproven at scale\n  2. Receipts feel secondary in onboarding\n\nFull report: [mr-soully-final.md](https://www.notion.so/soully-final).",
+    ),
+    Exchange(
+        sender="cho-research-app",
+        target="market-researcher",
+        body="Thanks. One more check: does removing the oracle-first framing hurt the spiritual payer segment? Add one line to the report.",
+        reply="Short answer: a little. Oracle-first converts about 18% better with the spiritual segment, but journal-first keeps App Review risk low. Added one line to the report under Gaps.",
+    ),
+    Exchange(
+        sender="cho-ua",
+        target="cho-ai-image-gen",
+        body="Brief chốt: 2 bộ, mỗi bộ 6 ảnh. Bộ A pastel sáng, bộ B Giáng sinh tông đậm. Cùng nội dung, chỉ khác hướng thiết kế. Gen xong gửi lại anh duyệt.",
+        reply="Đã nhận brief. Em gen 12 ảnh ngay, bản nháp đầu sẽ có sau ít phút.",
+    ),
+    Exchange(
+        sender="cho-ua",
+        target="cho-ai-image-gen",
+        body="Thêm một ý: ảnh #3 chỉ một cảnh igloo, headline “Find your cozy corner”. Không liệt kê phòng.",
+        reply="Ok anh, em cập nhật #3 theo headline mới, không liệt kê phòng.",
+    ),
+    Exchange(
+        sender="default",
+        target="cho-ua",
+        body="Anh Anh hỏi tiến độ bộ ảnh tháng 12 tới đâu rồi?",
+        reply="Đã giao làm 12 ảnh: bộ A pastel sáng, bộ B Giáng sinh tông đậm. Chi tiết xem [bảng creative](https://www.notion.so/creative-ua-t12).",
+    ),
+)
+
+DM_WAIT_SECONDS = 120
+
+ProviderAccount = namedtuple("ProviderAccount", "provider label auth_type base_path spend")
+
+PROVIDER_ACCOUNTS = (
+    ProviderAccount("openai-codex", "Personal", "oauth", "/backend-api/codex", None),
+    ProviderAccount("copilot", "Personal", "oauth", "", None),
+    ProviderAccount("openai-api", "Default key", "api_key", "", (182_400, 56_300, 4.27)),
+)
+SPEND_SOURCE = "api_server"
+
+OtherDevice = namedtuple("OtherDevice", "device_id label days_ago")
+
+OTHER_DEVICES = (
+    OtherDevice("e2e-desktop-0001", "Bens-MacBook-Pro.local", 9),
+    OtherDevice("e2e-desktop-0002", "tsnanh", 56),
+)
+
+
 def slugs():
     return [bot.slug for bot in BOTS]
 
 
 def message_times(bot, now):
+    turns = [as_turn(entry) for entry in bot.conversation]
     times = [bot.last_message.resolve(now)]
-    for role, _ in reversed(bot.conversation[1:]):
-        times.append(times[-1] - (REPLY_GAP if role == "assistant" else EXCHANGE_GAP))
+    for turn in reversed(turns[1:]):
+        gap = turn.gap_before or (REPLY_GAP if turn.role == "assistant" else EXCHANGE_GAP)
+        times.append(times[-1] - gap)
     return [moment.timestamp() for moment in reversed(times)]
 
 
@@ -195,6 +313,8 @@ def bot_meta(bot):
     meta = {"title": bot.title}
     if bot.look is not None:
         meta.update(shape=bot.look.shape, color=bot.look.color, custom=True)
+    if bot.pinned:
+        meta["pinned"] = True
     return meta
 
 
@@ -216,20 +336,87 @@ async def create_bot_chat(rpc, bot):
     return created["session_id"]
 
 
+def shared_time(item, now):
+    hour, minute = map(int, item.clock.split(":"))
+    return (now - timedelta(days=item.days_back)).replace(hour=hour, minute=minute, second=0, microsecond=0).timestamp()
+
+
+def write_library_media(profile_dir, name):
+    from PIL import Image, ImageDraw
+
+    target = profile_dir / "cache" / "images" / name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("RGB", (640, 480), (24, 28, 36))
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle((40, 40, 600, 120), radius=18, fill=(52, 120, 246))
+    for row in range(4):
+        top = 160 + row * 70
+        draw.rounded_rectangle((40, top, 600, top + 50), radius=12, fill=(44, 48, 58))
+        draw.ellipse((56, top + 12, 82, top + 38), fill=(245, 138, 6))
+    image.save(target, "PNG")
+    return target
+
+
 def write_transcript(profile_dir, session_id, bot, now):
     from hermes_state import SessionDB
 
     times = message_times(bot, now)
     database = SessionDB(db_path=profile_dir / "state.db")
     try:
-        for (role, text), moment in zip(bot.conversation, times, strict=True):
-            database.append_message(session_id, role, text, timestamp=moment)
+        started = times[0]
+        for item in bot.shared:
+            moment = shared_time(item, now)
+            text = item.text
+            if item.media:
+                text = text.format(media=write_library_media(profile_dir, item.media))
+            database.append_message(session_id, item.role, text, timestamp=moment)
+            started = min(started, moment)
+        for entry, moment in zip(bot.conversation, times, strict=True):
+            turn = as_turn(entry)
+            database.append_message(session_id, turn.role, turn.text, timestamp=moment, display_kind=turn.display_kind)
         database._write_sql(
             "UPDATE sessions SET started_at = ?, last_activity_at = ? WHERE id = ?",
-            (times[0], times[-1], session_id),
+            (started, times[-1], session_id),
         )
     finally:
         database.close()
+
+
+def write_dm_replies(path):
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump({exchange.body.strip(): exchange.reply for exchange in EXCHANGES}, handle, ensure_ascii=False)
+
+
+async def settled_chat(rpc, slug, session_id, since_messages, reply):
+    snapshot = await rpc.call("session.resume", {"profile": slug, "session_id": session_id})
+    rows = snapshot.get("messages", [])
+    last = rows[-1] if rows else {}
+    done = not snapshot.get("running") and len(rows) > since_messages and last.get("role") == "assistant"
+    return done and (last.get("text") or last.get("content") or "").strip() == reply.strip()
+
+
+async def run_exchange(rpc, session_ids, exchange):
+    session_id = session_ids[exchange.sender]
+    before = len((await rpc.call("session.resume", {"profile": exchange.sender, "session_id": session_id})).get("messages", []))
+    await rpc.call("prompt.submit", {
+        "profile": exchange.sender, "session_id": session_id, "submission_id": str(uuid.uuid4()),
+        "text": f"MESSAGE_AGENT {exchange.target} :: {exchange.body}", "display_kind": "hidden",
+    })
+    deadline = asyncio.get_running_loop().time() + DM_WAIT_SECONDS
+    while not await settled_chat(rpc, exchange.sender, session_id, before, exchange.reply):
+        if asyncio.get_running_loop().time() > deadline:
+            raise SystemExit(f"bot message {exchange.sender} -> {exchange.target} did not settle in {DM_WAIT_SECONDS}s")
+        await asyncio.sleep(0.5)
+
+
+async def create_routines(rpc, bot):
+    for routine in bot.routines:
+        result = await rpc.call("cron.manage", {
+            "action": "add", "profile": bot.slug, "name": routine.title, "prompt": routine.prompt,
+            "schedule": routine.schedule, "deliver": "bot-chat",
+        })
+        if result.get("success") is False:
+            raise SystemExit(f"cron.manage add refused for {bot.slug}: {json.dumps(result)}")
 
 
 async def seed_through_gateway(home, now):
@@ -243,11 +430,56 @@ async def seed_through_gateway(home, now):
         rpc = client.Rpc(socket, events)
         pump = asyncio.create_task(rpc.pump())
         await events.get()
+        session_ids = {}
         for bot in BOTS:
             await configure_bot(rpc, bot)
-            session_id = await create_bot_chat(rpc, bot)
-            write_transcript(profile_directory(home, bot), session_id, bot, now)
+            session_ids[bot.slug] = await create_bot_chat(rpc, bot)
+            write_transcript(profile_directory(home, bot), session_ids[bot.slug], bot, now)
+            await create_routines(rpc, bot)
+        for exchange in EXCHANGES:
+            await run_exchange(rpc, session_ids, exchange)
         pump.cancel()
+
+
+def provider_root(stub_url):
+    return stub_url.rstrip("/").removesuffix("/v1")
+
+
+def seed_provider_accounts(home, stub_url):
+    from hermes_cli.auth import write_credential_pool
+    from hermes_state import SessionDB
+
+    root = provider_root(stub_url)
+    for account in PROVIDER_ACCOUNTS:
+        entry = {
+            "id": f"e2e-{account.provider}", "label": account.label, "auth_type": account.auth_type, "priority": 0,
+            "source": "manual", "access_token": f"e2e-fake-{account.provider}-credential",
+        }
+        if account.base_path:
+            entry["base_url"] = root + account.base_path
+        write_credential_pool(account.provider, [entry])
+    database = SessionDB(db_path=home / "state.db")
+    try:
+        for account in PROVIDER_ACCOUNTS:
+            if account.spend is None:
+                continue
+            input_tokens, output_tokens, usd = account.spend
+            database.update_token_counts(
+                f"e2e-spend-{account.provider}", input_tokens=input_tokens, output_tokens=output_tokens,
+                model="e2e-model", actual_cost_usd=usd, cost_status="actual", cost_source="provider_response",
+                billing_provider=account.provider, billing_mode="api", api_call_count=12, source=SPEND_SOURCE)
+    finally:
+        database.close()
+
+
+def seed_other_devices(home, now):
+    from gateway import device_registry
+
+    root = device_registry.install_root(home)
+    for device in OTHER_DEVICES:
+        device_registry.record_hello(
+            root, device_id=device.device_id, kind="desktop", label=device.label, model="Mac", os_name="macOS",
+            app_version="1.0", now=(now - timedelta(days=device.days_ago)).timestamp())
 
 
 def require_sandbox_home(home):
@@ -263,11 +495,15 @@ def require_sandbox_home(home):
     return resolved
 
 
-def seed(home, repo):
+def seed(home, repo, dm_replies):
     home = require_sandbox_home(home)
     os.environ["HERMES_HOME"] = str(home)
+    write_dm_replies(dm_replies)
     sys.path.insert(0, str(repo))
-    asyncio.run(seed_through_gateway(home, datetime.now().astimezone()))
+    now = datetime.now().astimezone()
+    asyncio.run(seed_through_gateway(home, now))
+    seed_provider_accounts(home, os.environ["HERMES_IOS_E2E_STUB_URL"])
+    seed_other_devices(home, now)
     print(",".join(slugs()))
 
 
@@ -278,11 +514,12 @@ def main():
     seed_parser = commands.add_parser("seed", help="through the running gateway (HERMES_IOS_TEST_* env) write titles and looks, mint each Bot Chat, then write its transcript; profiles must already exist")
     seed_parser.add_argument("--home", required=True, type=Path)
     seed_parser.add_argument("--repo", required=True, type=Path)
+    seed_parser.add_argument("--dm-replies", required=True, type=Path)
     args = parser.parse_args()
     if args.command == "slugs":
         print(",".join(slugs()))
     else:
-        seed(args.home, args.repo)
+        seed(args.home, args.repo, args.dm_replies)
 
 
 if __name__ == "__main__":

@@ -6062,6 +6062,25 @@ export interface PushUnregisterParams {
 export interface PushUnregisterResult {
   removed: boolean
 }
+/** ``query`` is trimmed and must be 1..200 characters. ``limit`` defaults to 20 and is clamped to 1..50. */
+export interface SessionSearchParams {
+  profile?: string | null
+  query: string
+  limit?: number
+}
+export interface SessionSearchResult {
+  results: SessionSearchHit[]
+}
+/** ``session_id`` is the conversation's lineage root and ``resolved_id`` the compression-lineage tip ``session.list`` reports. ``role`` and ``timestamp`` are null for a hit on a session id or title. ``snippet`` is plain text of at most 240 characters; ``timestamp`` is the matching message's unix seconds. */
+export interface SessionSearchHit {
+  session_id: string
+  resolved_id?: string | null
+  title: string | null
+  snippet: string
+  role: string | null
+  timestamp: number | null
+  profile: string
+}
 /** ``answers`` rides only on a reconnect replay (locks the server already accepted; null = skipped). */
 export interface ClarifyRequestParams {
   session_id: string
@@ -7695,6 +7714,10 @@ export interface CanonicalRpcMethods {
   'command.observe': { params: CommandObserveParams; result: CommandObserveResult }
   'config.get': { params: ConfigGetParams; result: CanonicalConfigGetResult }
   'config.set': { params: CanonicalConfigSetParams; result: ConfigSetResult }
+  /** The scoped member's hosted connector accounts, optionally filtered by connector slug. */
+  'connectors.accounts': { params: ConnectorAccountsParams; result: ConnectorAccountsResult }
+  /** Remove one hosted connector account owned by the scoped member. */
+  'connectors.accounts.remove': { params: ConnectorAccountsRemoveParams; result: ConnectorAccountsRemoveResult }
   /** The hosted connector catalog available to the scoped member. */
   'connectors.catalog': { params: ProfileParams; result: ConnectorsCatalogResult }
   /** Start or re-initiate authorization for named connectors on a session or account operation. */
@@ -7729,6 +7752,8 @@ export interface CanonicalRpcMethods {
   'display.lease.acquire': { params: DisplayLeaseAcquireParams; result: DisplayLeaseResult }
   /** Hand back. Without a viewer id the release is refused while a human holds unless force. */
   'display.lease.release': { params: DisplayLeaseReleaseParams; result: DisplayLeaseResult }
+  /** End the bot's pending hand-back ask (I'm done / Cancel). ask_at limits it to the ask the card showed. */
+  'display.lease.resolve': { params: DisplayLeaseResolveParams; result: DisplayLeaseResult }
   /** Mint a single-use ticket for /api/display/ws and the server-minted viewer id for this connection. */
   'display.observe': { params: DisplayObserveParams; result: DisplayObserveResult }
   /** Stop the screen and wipe its desktop settings and its Chrome profile copy (re-seeded from master on the next start). Refused (5300, code viewer_mismatch) while a human holds unless force; refused for a screen in a sandbox the bot does not have to itself. */
@@ -7759,12 +7784,20 @@ export interface CanonicalRpcMethods {
   'library.list': { params: LibraryListParams; result: LibraryListResult }
   /** Curated MCP presets with per-profile installed/enabled state and the env keys each needs. */
   'mcp.catalog': { params: ProfileParams; result: McpCatalogResult }
+  /** Add a server to the profile's config from a catalog preset and/or an explicit config. */
+  'mcp.servers.add': { params: McpServersAddParams; result: McpServersAddResult }
+  /** Relay a client-captured redirect into a client_redirect_uri flow. */
+  'mcp.servers.oauth.callback': { params: McpOauthCallbackParams; result: McpOauthCallbackResult }
   /** Cancel a flow owned by the resolved profile, waking its callback worker. */
   'mcp.servers.oauth.cancel': { params: McpOauthFlowParams; result: McpOauthCancelResult }
   /** Poll a flow; approved persists tokens for the profile and returns the probed tools. */
   'mcp.servers.oauth.poll': { params: McpOauthFlowParams; result: McpOauthPollResult }
   /** Begin a PKCE OAuth flow; the client opens auth_url and polls mcp.servers.oauth.poll. */
   'mcp.servers.oauth.start': { params: McpOauthStartParams; result: McpOauthStartResult }
+  /** Drop a server from the profile's config.yaml. */
+  'mcp.servers.remove': { params: McpServerNameParams; result: McpServersRemoveResult }
+  /** Store a credential in the profile's .env and reference it from the server config (header or env). */
+  'mcp.servers.set_api_key': { params: McpServersSetApiKeyParams; result: McpServersSetApiKeyResult }
   /** Import pasted text (a ChatGPT or Claude memory export) into a bot's memory: deduped, size-capped, scanned. */
   'memory.import': { params: MemoryImportParams; result: MemoryImportResult }
   /** Validate and save a bot's Slack tokens, enable the adapter and reload it. */
@@ -7839,6 +7872,8 @@ export interface CanonicalRpcMethods {
   'session.prune': { params: SessionPruneParams; result: SessionPruneResult }
   'session.redirect': { params: CanonicalCorrectionParams; result: CanonicalCorrectionResult }
   'session.resume': { params: CanonicalResumeParams; result: CanonicalSnapshot }
+  /** Search a profile's visible conversations by session id, message text and title: id matches first, then message hits, then title matches, one hit per conversation. Internal sessions and hidden sessions other than the canonical Bot Chat never match. */
+  'session.search': { params: SessionSearchParams; result: SessionSearchResult }
   /** The session.usage dict on demand: what main's classic CLI read off its agent. */
   'session.stats': { params: SessionStatsParams; result: SessionStats }
   'session.steer': { params: CanonicalCorrectionParams; result: CanonicalCorrectionResult }
@@ -7890,6 +7925,8 @@ export const CANONICAL_RPC_METHODS = [
   'command.observe',
   'config.get',
   'config.set',
+  'connectors.accounts',
+  'connectors.accounts.remove',
   'connectors.catalog',
   'connectors.connect',
   'connectors.list',
@@ -7907,6 +7944,7 @@ export const CANONICAL_RPC_METHODS = [
   'devices.list',
   'display.lease.acquire',
   'display.lease.release',
+  'display.lease.resolve',
   'display.observe',
   'display.reset',
   'display.start',
@@ -7924,9 +7962,13 @@ export const CANONICAL_RPC_METHODS = [
   'library.asset',
   'library.list',
   'mcp.catalog',
+  'mcp.servers.add',
+  'mcp.servers.oauth.callback',
   'mcp.servers.oauth.cancel',
   'mcp.servers.oauth.poll',
   'mcp.servers.oauth.start',
+  'mcp.servers.remove',
+  'mcp.servers.set_api_key',
   'memory.import',
   'messaging.slack.connect',
   'messaging.slack.disconnect',
@@ -7968,6 +8010,7 @@ export const CANONICAL_RPC_METHODS = [
   'session.prune',
   'session.redirect',
   'session.resume',
+  'session.search',
   'session.stats',
   'session.steer',
   'shared_metrics.set',

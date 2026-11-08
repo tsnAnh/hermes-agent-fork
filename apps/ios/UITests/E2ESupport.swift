@@ -23,6 +23,7 @@ struct E2EEnvironment {
 @MainActor
 class E2ETestCase: XCTestCase {
     var env: E2EEnvironment!
+    private static var credentialsResetThisRun = false
 
     override func setUp() async throws {
         continueAfterFailure = false
@@ -31,12 +32,34 @@ class E2ETestCase: XCTestCase {
 
     func launch(resetCredentials: Bool = false, extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = (resetCredentials ? ["-hermes-reset-credentials"] : []) + extraArguments
+        let reset = resetCredentials || !Self.credentialsResetThisRun
+        Self.credentialsResetThisRun = true
+        app.launchArguments = (reset ? ["-hermes-reset-credentials"] : []) + extraArguments
         app.launch()
         return app
     }
 
+    private static var notificationPromptSettled = false
+
+    func allowNotificationsIfAsked() {
+        guard !Self.notificationPromptSettled else { return }
+        Self.notificationPromptSettled = true
+        let allow = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.buttons["Allow"]
+        if allow.waitForExistence(timeout: 4) { allow.tap() }
+    }
+
+    func signalHost(_ name: String) {
+        guard let directory = env.shotsDirectory else { return }
+        try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: URL(fileURLWithPath: directory).appendingPathComponent(name).path, contents: Data())
+    }
+
     func signInIfNeeded(_ app: XCUIApplication) {
+        signInThenSettle(app)
+        allowNotificationsIfAsked()
+    }
+
+    private func signInThenSettle(_ app: XCUIApplication) {
         if roster(app).waitForExistence(timeout: 15) { return }
         let field = app.textFields["baseURLField"]
         XCTAssertTrue(field.waitForExistence(timeout: 15), app.debugDescription)
@@ -93,6 +116,22 @@ class E2ETestCase: XCTestCase {
 
     func waitFor(_ element: XCUIElement, timeout: TimeInterval = 30, _ message: String = "", file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(element.waitForExistence(timeout: timeout), message + "\n" + XCUIApplication().debugDescription, file: file, line: line)
+    }
+
+    @discardableResult
+    func waitForReply(_ app: XCUIApplication, below text: String, timeout: TimeInterval = 60) -> XCUIElement? {
+        let userBubble = bubbles(app, "userBubble", containing: text).firstMatch
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            let reply = app.descendants(matching: .any).matching(identifier: "assistantBubble").allElementsBoundByIndex.last
+            if let reply, userBubble.exists, reply.frame.minY > userBubble.frame.minY,
+               !app.descendants(matching: .any)["assistantBubble-streaming"].exists {
+                return reply
+            }
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        XCTFail("reply to \(text) did not complete")
+        return nil
     }
 
     func waitGone(_ element: XCUIElement, timeout: TimeInterval = 60, _ message: String = "", file: StaticString = #filePath, line: UInt = #line) {
