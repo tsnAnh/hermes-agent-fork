@@ -65,6 +65,8 @@ targets:
         product: HermesChat
       - package: HermesKit
         product: HermesRoster
+      - package: HermesKit
+        product: HermesSettings
       - package: HermesDesign
         product: HermesDesign
   HermesBotsUITests:
