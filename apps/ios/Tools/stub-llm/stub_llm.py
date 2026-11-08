@@ -3,6 +3,7 @@ import json
 import sys
 import threading
 import time
+from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 MODEL = "stub-model"
@@ -14,6 +15,27 @@ CLARIFY_QUESTION = "Which flavor do you want?"
 CLARIFY_CHOICES = ["vanilla", "chocolate"]
 
 log_lock = threading.Lock()
+
+CODEX_USAGE_PATH = "/backend-api/wham/usage"
+COPILOT_USAGE_PATH = "/copilot_internal/user"
+
+
+def provider_usage(path, now=None):
+    now = now or datetime.now(UTC)
+    iso = lambda delta: (now + delta).strftime("%Y-%m-%dT%H:%M:%SZ")
+    route = path.split("?", 1)[0]
+    if route == CODEX_USAGE_PATH:
+        return {"plan_type": "plus", "rate_limit": {
+            "primary_window": {"used_percent": 18, "limit_window_seconds": 18000,
+                               "reset_at": int((now + timedelta(hours=3, minutes=20)).timestamp())},
+            "secondary_window": {"used_percent": 42, "limit_window_seconds": 604800,
+                                 "reset_at": int((now + timedelta(days=6, hours=2)).timestamp())},
+        }}
+    if route == COPILOT_USAGE_PATH:
+        return {"access_type_sku": "free_limited_copilot", "quota_reset_date_utc": iso(timedelta(days=9, hours=4)),
+                "quota_snapshots": {"chat": {"percent_remaining": 40, "entitlement": 50, "remaining": 20},
+                                    "completions": {"percent_remaining": 75, "entitlement": 2000, "remaining": 1500}}}
+    return None
 
 
 def text_of(content):
@@ -60,7 +82,11 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        if self.path.rstrip("/").endswith("/models"):
+        usage = provider_usage(self.path)
+        if usage is not None:
+            authorized = bool(self.headers.get("Authorization"))
+            self.reply_json(usage if authorized else {"error": "unauthorized"}, status=200 if authorized else 401)
+        elif self.path.rstrip("/").endswith("/models"):
             self.reply_json({"object": "list", "data": [{"id": MODEL, "object": "model", "owned_by": "stub"}]})
         else:
             self.reply_json({"ok": True})
