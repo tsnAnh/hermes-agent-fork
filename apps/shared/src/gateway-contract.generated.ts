@@ -7834,7 +7834,7 @@ export interface CanonicalRpcMethods {
   'session.prune': { params: SessionPruneParams; result: SessionPruneResult }
   'session.redirect': { params: CanonicalCorrectionParams; result: CanonicalCorrectionResult }
   'session.resume': { params: CanonicalResumeParams; result: CanonicalSnapshot }
-  /** Search a profile's visible conversations by session id, message text and title: id matches first, then message hits, then title matches, one hit per conversation. Hidden and internal sessions never match. */
+  /** Search a profile's visible conversations by session id, message text and title: id matches first, then message hits, then title matches, one hit per conversation. Internal sessions and hidden sessions other than the canonical Bot Chat never match. */
   'session.search': { params: SessionSearchParams; result: SessionSearchResult }
   /** The session.usage dict on demand: what main's classic CLI read off its agent. */
   'session.stats': { params: SessionStatsParams; result: SessionStats }
