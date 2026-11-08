@@ -1,11 +1,11 @@
 import argparse
-import datetime
 import json
 import re
 import sys
 import threading
 import time
 import uuid
+from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 MODEL = "stub-model"
@@ -26,8 +26,34 @@ DM_SENT_REPLY = "Đã nhắn."
 dm_replies_path = None
 IPHONE_TRIGGER = "IPHONE"
 IPHONE_RESULT_LIMIT = 600
+TOOL_FINAL_PREFIX = "stub-tool-final "
+TOOL_COMMANDS = {
+    "TOOLCALL": "sleep 6",
+    "APPROVE": 'cd "$(mktemp -d)" && git reset --hard',
+}
 
 log_lock = threading.Lock()
+
+CODEX_USAGE_PATH = "/backend-api/wham/usage"
+COPILOT_USAGE_PATH = "/copilot_internal/user"
+
+
+def provider_usage(path, now=None):
+    now = now or datetime.now(UTC)
+    iso = lambda delta: (now + delta).strftime("%Y-%m-%dT%H:%M:%SZ")
+    route = path.split("?", 1)[0]
+    if route == CODEX_USAGE_PATH:
+        return {"plan_type": "plus", "rate_limit": {
+            "primary_window": {"used_percent": 18, "limit_window_seconds": 18000,
+                               "reset_at": int((now + timedelta(hours=3, minutes=20)).timestamp())},
+            "secondary_window": {"used_percent": 42, "limit_window_seconds": 604800,
+                                 "reset_at": int((now + timedelta(days=6, hours=2)).timestamp())},
+        }}
+    if route == COPILOT_USAGE_PATH:
+        return {"access_type_sku": "free_limited_copilot", "quota_reset_date_utc": iso(timedelta(days=9, hours=4)),
+                "quota_snapshots": {"chat": {"percent_remaining": 40, "entitlement": 50, "remaining": 20},
+                                    "completions": {"percent_remaining": 75, "entitlement": 2000, "remaining": 1500}}}
+    return None
 
 
 def text_of(content):
@@ -86,10 +112,10 @@ def last_tool_name(messages):
 def iphone_arguments(user_text):
     after = (user_text.split(IPHONE_TRIGGER, 1)[1].strip().splitlines() or [""])[0].split()
     kind, rest = (after[0].upper() if after else ""), " ".join(after[1:])
-    now = datetime.datetime.now(datetime.UTC)
+    now = datetime.now(UTC)
     window = {
-        "start": (now - datetime.timedelta(hours=12)).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "end": (now + datetime.timedelta(hours=36)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "start": (now - timedelta(hours=12)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "end": (now + timedelta(hours=36)).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
     actions = {
         "CALENDAR": {"action": "calendar.list_events", "args": window},
@@ -123,6 +149,11 @@ def plan(body):
         return "final", iphone_answer(text_of(last.get("content"))), NORMAL_DELAY
     if "iphone" in names and last_role == "user" and IPHONE_TRIGGER in last_user and (call := iphone_arguments(last_user)):
         return "iphone", call, 0
+    tool_trigger = next((key for key in TOOL_COMMANDS if key in last_user), None)
+    if "terminal" in names and tool_trigger and last_role == "tool":
+        return "text", [TOOL_FINAL_PREFIX + text_of(last.get("content"))], NORMAL_DELAY
+    if "terminal" in names and tool_trigger and last_role == "user":
+        return "tool", {"name": "terminal", "arguments": {"command": TOOL_COMMANDS[tool_trigger]}}, 0
     if "clarify" in names and last_role == "tool":
         return "final", "Clarify answered: " + text_of(last.get("content")), NORMAL_DELAY
     if "clarify" in names and last_role == "user" and "CLARIFY" in last_user:
@@ -146,7 +177,11 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        if self.path.rstrip("/").endswith("/models"):
+        usage = provider_usage(self.path)
+        if usage is not None:
+            authorized = bool(self.headers.get("Authorization"))
+            self.reply_json(usage if authorized else {"error": "unauthorized"}, status=200 if authorized else 401)
+        elif self.path.rstrip("/").endswith("/models"):
             self.reply_json({"object": "list", "data": [{"id": MODEL, "object": "model", "owned_by": "stub"}]})
         else:
             self.reply_json({"ok": True})

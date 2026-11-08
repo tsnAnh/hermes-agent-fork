@@ -16,6 +16,7 @@ struct HermesBotsApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        LaunchPreferences.applyReset()
         let model = ConnectionModel.live()
         _model = State(initialValue: model)
         let roster = RosterModel(connection: model)
@@ -37,6 +38,7 @@ struct HermesBotsApp: App {
                 .overlay { ReachOfferOverlay(model: offers) }
                 .deviceConsentAlert(consent)
                 .hermesTheme(mode: appearance.mode, botAccent: roster.accentBot?.accent)
+                .environment(appearance)
                 .task { await model.restore() }
                 .task { await offers.listen() }
                 .task {
@@ -130,7 +132,7 @@ struct RootView: View {
             .sheet(item: $router.sheet, onDismiss: { createBot = CreateBotModel() }) { sheet in
                 switch sheet {
                 case .settings:
-                    SettingsSheet(model: model) { router.dismissSheet() }
+                    SettingsSheet(model: model, roster: roster, openConnectApps: { router.presentConnectApps() }) { router.dismissSheet() }
                 case .createBot:
                     CreateBotSheet(model: createBot, roster: roster, router: router)
                 case .connectApps:
