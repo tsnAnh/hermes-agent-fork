@@ -7671,6 +7671,10 @@ export interface CanonicalRpcMethods {
   'config.set': { params: CanonicalConfigSetParams; result: ConfigSetResult }
   /** Per-target outcomes from the card, and an optional Continue. */
   'connection.respond': { params: ConnectionRespondParams; result: ConnectionRespondResult }
+  /** The scoped member's hosted connector accounts, optionally filtered by connector slug. */
+  'connectors.accounts': { params: ConnectorAccountsParams; result: ConnectorAccountsResult }
+  /** Remove one hosted connector account owned by the scoped member. */
+  'connectors.accounts.remove': { params: ConnectorAccountsRemoveParams; result: ConnectorAccountsRemoveResult }
   /** The hosted connector catalog available to the scoped member. */
   'connectors.catalog': { params: ProfileParams; result: ConnectorsCatalogResult }
   /** Start or re-initiate authorization for named connectors on a session or account operation. */
@@ -7735,12 +7739,20 @@ export interface CanonicalRpcMethods {
   'library.list': { params: LibraryListParams; result: LibraryListResult }
   /** Curated MCP presets with per-profile installed/enabled state and the env keys each needs. */
   'mcp.catalog': { params: ProfileParams; result: McpCatalogResult }
+  /** Add a server to the profile's config from a catalog preset and/or an explicit config. */
+  'mcp.servers.add': { params: McpServersAddParams; result: McpServersAddResult }
+  /** Relay a client-captured redirect into a client_redirect_uri flow. */
+  'mcp.servers.oauth.callback': { params: McpOauthCallbackParams; result: McpOauthCallbackResult }
   /** Cancel a flow owned by the resolved profile, waking its callback worker. */
   'mcp.servers.oauth.cancel': { params: McpOauthFlowParams; result: McpOauthCancelResult }
   /** Poll a flow; approved persists tokens for the profile and returns the probed tools. */
   'mcp.servers.oauth.poll': { params: McpOauthFlowParams; result: McpOauthPollResult }
   /** Begin a PKCE OAuth flow; the client opens auth_url and polls mcp.servers.oauth.poll. */
   'mcp.servers.oauth.start': { params: McpOauthStartParams; result: McpOauthStartResult }
+  /** Drop a server from the profile's config.yaml. */
+  'mcp.servers.remove': { params: McpServerNameParams; result: McpServersRemoveResult }
+  /** Store a credential in the profile's .env and reference it from the server config (header or env). */
+  'mcp.servers.set_api_key': { params: McpServersSetApiKeyParams; result: McpServersSetApiKeyResult }
   /** Import pasted text (a ChatGPT or Claude memory export) into a bot's memory: deduped, size-capped, scanned. */
   'memory.import': { params: MemoryImportParams; result: MemoryImportResult }
   /** Validate and save a bot's Slack tokens, enable the adapter and reload it. */
@@ -7867,6 +7879,8 @@ export const CANONICAL_RPC_METHODS = [
   'config.get',
   'config.set',
   'connection.respond',
+  'connectors.accounts',
+  'connectors.accounts.remove',
   'connectors.catalog',
   'connectors.connect',
   'connectors.list',
@@ -7901,9 +7915,13 @@ export const CANONICAL_RPC_METHODS = [
   'library.asset',
   'library.list',
   'mcp.catalog',
+  'mcp.servers.add',
+  'mcp.servers.oauth.callback',
   'mcp.servers.oauth.cancel',
   'mcp.servers.oauth.poll',
   'mcp.servers.oauth.start',
+  'mcp.servers.remove',
+  'mcp.servers.set_api_key',
   'memory.import',
   'messaging.slack.connect',
   'messaging.slack.disconnect',
